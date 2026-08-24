@@ -42,6 +42,16 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload   # usa semilla JSON si no hay Neo4j
 ```
 
+### Pruebas
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest tests -q
+```
+
+46 pruebas: fórmula de Stanford exacta, conservación de dosis por fase, reglas de antagonismo, asignación dominante de fuentes, trazabilidad de referencias, curvas GNN monótonas y sensibles a familia, CRUD completo y guardrails del chat.
+
 ### Frontend en desarrollo
 
 ```bash

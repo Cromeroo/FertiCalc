@@ -13,15 +13,16 @@ import type { PlanGnnRespuesta, RespuestaGnn } from '@/lib/api'
 const FAMILIAS = ['solanaceae', 'poaceae', 'cucurbitaceae', 'rosaceae', 'asteraceae']
 
 export function LaboratorioGnn() {
-  const [ext, setExt] = useState({ N: '2.8', P: '0.9', K: '4.0' })
+  const [familia, setFamilia] = useState('solanaceae')
+  const [ext, setExt] = useState({ N: '', P: '', K: '' })
   const [rendimiento, setRendimiento] = useState('30')
   const [fases, setFases] = useState(4)
-  const [familia, setFamilia] = useState('solanaceae')
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState<PlanGnnRespuesta | null>(null)
   const [mae, setMae] = useState<number | null>(null)
   const [fuenteValores, setFuenteValores] = useState('')
+  const [editadoManual, setEditadoManual] = useState(false)
 
   useEffect(() => {
     api.estadoGnn().then(e => {
@@ -29,21 +30,23 @@ export function LaboratorioGnn() {
     }).catch(() => {})
   }, [])
 
-  async function usarPromedioFamilia() {
-    try {
-      const ref = await api.referenciaFamilia(familia)
-      setExt({
-        N: String(ref.extraccion_kg_t.N.promedio),
-        P: String(ref.extraccion_kg_t.P.promedio),
-        K: String(ref.extraccion_kg_t.K.promedio)
+  useEffect(() => {
+    let cancelado = false
+    api.referenciaFamilia(familia)
+      .then(ref => {
+        if (cancelado || editadoManual) return
+        setExt({
+          N: String(ref.extraccion_kg_t.N.promedio),
+          P: String(ref.extraccion_kg_t.P.promedio),
+          K: String(ref.extraccion_kg_t.K.promedio)
+        })
+        setFuenteValores(
+          `Sugerido: promedio de ${ref.num_cultivos} cultivo(s) de esta familia (${ref.cultivos.map(c => c.id).join(', ')}). Ajústalos si tienes análisis propio.`
+        )
       })
-      setFuenteValores(
-        `Promedio de ${ref.num_cultivos} cultivos de la familia (${ref.cultivos.map(c => c.id).join(', ')}). Rango N: ${ref.extraccion_kg_t.N.min}–${ref.extraccion_kg_t.N.max} kg/t.`
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sin referencia para esa familia')
-    }
-  }
+      .catch(() => {})
+    return () => { cancelado = true }
+  }, [familia, editadoManual])
 
   async function predecir(e: React.FormEvent) {
     e.preventDefault()
@@ -74,51 +77,65 @@ export function LaboratorioGnn() {
           Cultivos nuevos — curva y plan estimados
           <Badge variant="warning">experimental · IA</Badge>
         </CardTitle>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">
-          Para cultivos sin curvas publicadas: la GNN estima la forma de la curva según su familia botánica y el motor determinista calcula el plan.
-          {mae != null && ` Precisión validada: ±${mae} pts (leave-one-out).`}
-        </p>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <form onSubmit={predecir} className="space-y-3">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="w-24">
-              <Label htmlFor="gnn-n">N kg/t</Label>
-              <Input id="gnn-n" type="number" min="0.01" step="0.1" value={ext.N}
-                onChange={e => setExt({ ...ext, N: e.target.value })} required />
-            </div>
-            <div className="w-24">
-              <Label htmlFor="gnn-p">P₂O₅ kg/t</Label>
-              <Input id="gnn-p" type="number" min="0.01" step="0.1" value={ext.P}
-                onChange={e => setExt({ ...ext, P: e.target.value })} required />
-            </div>
-            <div className="w-24">
-              <Label htmlFor="gnn-k">K₂O kg/t</Label>
-              <Input id="gnn-k" type="number" min="0.01" step="0.1" value={ext.K}
-                onChange={e => setExt({ ...ext, K: e.target.value })} required />
-            </div>
-            <Button type="button" variant="ghost" size="sm" onClick={usarPromedioFamilia}>
-              No tengo datos: usar promedio de la familia
-            </Button>
-          </div>
-          <p className="-mt-1 text-[10px] text-muted-foreground">
-            ¿De dónde salen estos valores? De un análisis de tejido a la cosecha, de tablas de extracción del cultivo, o usa el promedio de su familia arriba.
-            {fuenteValores && <span className="block mt-0.5 text-primary">{fuenteValores}</span>}
+      <CardContent className="space-y-4">
+        <div className="rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-muted-foreground space-y-1">
+          <p className="font-medium text-foreground">¿Para qué sirve esto?</p>
+          <p>
+            Para sembrar un cultivo <strong className="text-foreground">sin curvas publicadas</strong>. La literatura científica rara vez documenta
+            <em> cuándo</em> el cultivo absorbe cada nutriente (requiere muestrear planta completa durante todo el ciclo); documentar <em>cuánto</em> extrae por tonelada sí es común.
           </p>
+          <p><strong className="text-foreground">Cómo funciona:</strong></p>
+          <ol className="list-decimal pl-4 space-y-0.5">
+            <li>Eliges la familia botánica — conecta tu cultivo con parientes del grafo cuyo comportamiento conocemos.</li>
+            <li>El sistema sugiere su extracción típica (ajústala si tienes análisis de tejido propio).</li>
+            <li>La IA predice la distribución por fase y el motor determinista convierte eso en un plan de kg/ha con fuentes y evidencia.</li>
+          </ol>
+        </div>
+
+        <form onSubmit={predecir} className="space-y-3">
+          <div className="max-w-sm">
+            <Label htmlFor="gnn-familia" >
+              1. Familia botánica de tu cultivo
+            </Label>
+            <Select id="gnn-familia" value={familia} onChange={e => { setFamilia(e.target.value); setEditadoManual(false) }}>
+              {FAMILIAS.map(f => <option key={f} value={f}>{f}</option>)}
+            </Select>
+          </div>
+
+          <div>
+            <Label>2. Extracción del cultivo (kg por tonelada cosechada)</Label>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="w-24">
+                <Input id="gnn-n" type="number" min="0.01" step="0.1" value={ext.N}
+                  aria-label="Extracción de nitrógeno kg/t"
+                  onChange={e => { setExt({ ...ext, N: e.target.value }); setEditadoManual(true) }} required />
+                <p className="mt-1 text-[10px] text-muted-foreground">N</p>
+              </div>
+              <div className="w-24">
+                <Input id="gnn-p" type="number" min="0.01" step="0.1" value={ext.P}
+                  aria-label="Extracción de fósforo kg/t"
+                  onChange={e => { setExt({ ...ext, P: e.target.value }); setEditadoManual(true) }} required />
+                <p className="mt-1 text-[10px] text-muted-foreground">P₂O₅</p>
+              </div>
+              <div className="w-24">
+                <Input id="gnn-k" type="number" min="0.01" step="0.1" value={ext.K}
+                  aria-label="Extracción de potasio kg/t"
+                  onChange={e => { setExt({ ...ext, K: e.target.value }); setEditadoManual(true) }} required />
+                <p className="mt-1 text-[10px] text-muted-foreground">K₂O</p>
+              </div>
+            </div>
+            {fuenteValores && <p className="mt-1 text-[10px] text-primary">{fuenteValores}</p>}
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              ¿De dónde sacarlos? Análisis de tejido a la cosecha, tablas de extracción del cultivo, o deja los sugeridos.
+            </p>
+          </div>
+
           <div className="flex flex-wrap items-end gap-2">
-            <div className="w-28">
-              <Label htmlFor="gnn-rend">t/ha esperadas</Label>
+            <div className="w-32">
+              <Label htmlFor="gnn-rend">3. Rendimiento esperado (t/ha)</Label>
               <Input id="gnn-rend" type="number" min="0.1" step="1" value={rendimiento}
                 onChange={e => setRendimiento(e.target.value)} required />
-            </div>
-            <div className="w-44">
-              <Label htmlFor="gnn-familia">Familia botánica</Label>
-              <Select id="gnn-familia" value={familia} onChange={e => setFamilia(e.target.value)}>
-                {FAMILIAS.map(f => <option key={f} value={f}>{f}</option>)}
-              </Select>
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                Define con qué cultivos del grafo se conecta la predicción
-              </p>
             </div>
             <div className="w-28">
               <Label htmlFor="gnn-fases">Fases del ciclo</Label>
@@ -163,6 +180,7 @@ export function LaboratorioGnn() {
                       {r.cultivo_id} · {r.apoyo_pct}%
                     </Badge>
                   ))}
+                  {mae != null && <Badge variant="outline">precisión ±{mae} pts</Badge>}
                 </div>
               </div>
             )}
