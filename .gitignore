@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+dist/
+neo4j_data/
+backend/data/ferticalc.db

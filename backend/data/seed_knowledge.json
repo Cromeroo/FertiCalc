@@ -1,0 +1,422 @@
+{
+  "version": "0.2.0",
+  "nutrientes": [
+    { "id": "N", "simbolo": "N", "nombre": "Nitrogeno" },
+    { "id": "P", "simbolo": "P2O5", "nombre": "Fosforo (como P2O5)" },
+    { "id": "K", "simbolo": "K2O", "nombre": "Potasio (como K2O)" }
+  ],
+  "referencias": [
+    {
+      "id": "salazar2013",
+      "autores": "Salazar-Jara, I. y Juarez-Lopez, P.",
+      "anio": 2013,
+      "titulo": "Extraccion nutrimental y requerimiento nutrimental especifico en chile",
+      "fuente": "Revista Bio Ciencias 2(2):27-34"
+    },
+    {
+      "id": "bertsch2016",
+      "autores": "Bertsch, F.",
+      "anio": 2016,
+      "titulo": "Las Curvas de Absorcion de Nutrientes",
+      "fuente": "5 Congreso Internacional de Nutricion y Fisiologia Vegetal Aplicadas, Intagri"
+    },
+    {
+      "id": "intagri_curvas",
+      "autores": "Intagri",
+      "anio": 2017,
+      "titulo": "Las curvas de absorcion de nutrientes (nota tecnica)",
+      "fuente": "intagri.com/articulos/nutricion-vegetal"
+    },
+    {
+      "id": "stanford1973",
+      "autores": "Stanford, G.",
+      "anio": 1973,
+      "titulo": "Rationale for optimum nitrogen fertilization in corn and wheat",
+      "fuente": "Agronomy Journal 65 (modelo Dosis=(Dem-Sum)/ERF)"
+    },
+    {
+      "id": "marschner1995",
+      "autores": "Marschner, H.",
+      "anio": 1995,
+      "titulo": "Mineral Nutrition of Higher Plants (2nd ed.)",
+      "fuente": "Academic Press (interacciones y antagonismos ionicos)"
+    }
+  ],
+  "fuentes_fertilizante": [
+    { "id": "urea", "nombre": "Urea", "tipo": "nitrogenado solido", "aporta": { "N": 46.0 } },
+    { "id": "map", "nombre": "Fosfato monoamonico (MAP)", "tipo": "fosfatado solido", "aporta": { "N": 11.0, "P": 52.0 } },
+    { "id": "dap", "nombre": "Fosfato diamonico (DAP)", "tipo": "fosfatado solido", "aporta": { "N": 18.0, "P": 46.0 } },
+    { "id": "kcl", "nombre": "Cloruro de potasio (KCl)", "tipo": "potasico solido", "aporta": { "K": 60.0 } },
+    { "id": "nk_nitrato_potasio", "nombre": "Nitrato de potasio", "tipo": "NK soluble fertirriego", "aporta": { "N": 13.0, "K": 46.0 } },
+    { "id": "sulfato_amonio", "nombre": "Sulfato de amonio", "tipo": "nitrogenado azufrado solido", "aporta": { "N": 21.0 } },
+    { "id": "uan32", "nombre": "UAN 32% (urea-amoniaco-nitrato)", "tipo": "nitrogenado liquido fertirriego", "aporta": { "N": 32.0 } },
+    { "id": "acido_fosforico", "nombre": "Acido fosforico 85%", "tipo": "fosfatado liquido fertirriego", "aporta": { "P": 54.0 } }
+  ],
+  "reglas_antagonismo": [
+    {
+      "id": "K_vs_CaMg",
+      "tipo": "ratio_supera",
+      "base": "K",
+      "nutriente_ref": "N",
+      "factor": 1.5,
+      "mensaje": "Dosis alta de K2O respecto a N puede inhibir absorcion de Ca y Mg (antagonismo cationico); considere aporte de calcio/magnesio o analisis foliar.",
+      "referencia": "marschner1995"
+    },
+    {
+      "id": "P_vs_Zn",
+      "tipo": "dosis_supera_umbral",
+      "base": "P",
+      "umbral": 120,
+      "mensaje": "Dosis elevada de P2O5 puede inducir deficiencia de Zn (sobre todo en suelos calcareos); monitoree zinc foliar.",
+      "referencia": "marschner1995"
+    },
+    {
+      "id": "N_diluido_lluvia",
+      "tipo": "dosis_supera_umbral",
+      "base": "N",
+      "umbral": 300,
+      "mensaje": "Dosis de N superior a 300 kg/ha: fraccione en mas aplicaciones para reducir lixiviacion de nitratos.",
+      "referencia": "intagri_curvas"
+    }
+  ],
+  "cultivos": [
+    {
+      "id": "tomate",
+      "nombre": "Tomate (Solanum lycopersicum)",
+      "unidad_rendimiento": "t/ha fruto fresco",
+      "extraccion_por_tonelada": { "N": 3.0, "P": 1.0, "K": 4.5 },
+      "preferencia_fuentes": ["acido_fosforico", "kcl", "uan32"],
+      "referencias_extraccion": ["bertsch2016", "intagri_curvas"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "Valores de referencia para tomate de rama a campo; ajustar por cultivar y sistema (invernadero/intensivo extrae mas). Preferencia de fuentes: fertirriego.",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento",
+          "bbch_inicio": "00",
+          "bbch_fin": "19",
+          "descripcion": "Germinacion/traslante a inicio de desarrollo foliar",
+          "curva_pct_acumulada": { "N": 8, "P": 6, "K": 5 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo vegetativo",
+          "bbch_inicio": "20",
+          "bbch_fin": "49",
+          "descripcion": "Brotes laterales hasta boton floral inicial",
+          "curva_pct_acumulada": { "N": 38, "P": 31, "K": 25 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 3,
+          "nombre": "Floracion y cuajado",
+          "bbch_inicio": "50",
+          "bbch_fin": "69",
+          "descripcion": "Floracion plena y cuaje de frutos",
+          "curva_pct_acumulada": { "N": 65, "P": 58, "K": 53 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 4,
+          "nombre": "Llenado y maduracion de fruto",
+          "bbch_inicio": "70",
+          "bbch_fin": "89",
+          "descripcion": "Desarrollo de frutos hasta madurez de cosecha",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "bertsch2016"
+        }
+      ]
+    },
+    {
+      "id": "maiz",
+      "nombre": "Maiz grano (Zea mays)",
+      "unidad_rendimiento": "t/ha grano seco",
+      "extraccion_por_tonelada": { "N": 22.0, "P": 10.0, "K": 20.0 },
+      "preferencia_fuentes": ["map", "kcl", "urea"],
+      "referencias_extraccion": ["intagri_curvas", "stanford1973"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "Extraccion total planta por tonelada de grano; curvas tipo hibrido de ciclo intermedio. Fuentes solidas de aplicacion edafica.",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento",
+          "bbch_inicio": "00",
+          "bbch_fin": "14",
+          "descripcion": "Emergencia a 4 hojas (VE-V4)",
+          "curva_pct_acumulada": { "N": 7, "P": 5, "K": 6 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo vegetativo acelerado",
+          "bbch_inicio": "15",
+          "bbch_fin": "59",
+          "descripcion": "V6 a panoja (VT); maxima tasa de absorcion de K",
+          "curva_pct_acumulada": { "N": 52, "P": 45, "K": 61 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 3,
+          "nombre": "Floracion y amarre",
+          "bbch_inicio": "60",
+          "bbch_fin": "79",
+          "descripcion": "Floracion (R1-R2) e inicio de llenado",
+          "curva_pct_acumulada": { "N": 82, "P": 75, "K": 91 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 4,
+          "nombre": "Llenado de grano y madurez",
+          "bbch_inicio": "80",
+          "bbch_fin": "99",
+          "descripcion": "Llenado (R3-R6) a madurez fisiologica",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "bertsch2016"
+        }
+      ]
+    },
+    {
+      "id": "chile",
+      "nombre": "Chile jalapeño (Capsicum annuum)",
+      "unidad_rendimiento": "t/ha fruto fresco",
+      "extraccion_por_tonelada": { "N": 3.2, "P": 0.7, "K": 4.3 },
+      "preferencia_fuentes": ["acido_fosforico", "kcl", "uan32"],
+      "referencias_extraccion": ["salazar2013"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "Requerimiento especifico revisado: N 2.4-4.0, P2O5 0.4-1.0, K2O 3.4-5.29 kg/t; se usan valores medios. Preferencia de fuentes: fertirriego.",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento",
+          "bbch_inicio": "00",
+          "bbch_fin": "19",
+          "descripcion": "Traslante a prendimiento",
+          "curva_pct_acumulada": { "N": 8, "P": 7, "K": 6 },
+          "referencia_curva": "salazar2013"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo vegetativo",
+          "bbch_inicio": "20",
+          "bbch_fin": "49",
+          "descripcion": "Ramificacion a boton floral",
+          "curva_pct_acumulada": { "N": 40, "P": 33, "K": 30 },
+          "referencia_curva": "salazar2013"
+        },
+        {
+          "orden": 3,
+          "nombre": "Floracion y fructificacion",
+          "bbch_inicio": "50",
+          "bbch_fin": "69",
+          "descripcion": "Floracion plena a frutos en crecimiento",
+          "curva_pct_acumulada": { "N": 70, "P": 63, "K": 67 },
+          "referencia_curva": "salazar2013"
+        },
+        {
+          "orden": 4,
+          "nombre": "Cosecha y maduracion",
+          "bbch_inicio": "70",
+          "bbch_fin": "89",
+          "descripcion": "Cortes sucesivos hasta fin de ciclo",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "salazar2013"
+        }
+      ]
+    },
+    {
+      "id": "fresa",
+      "nombre": "Fresa (Fragaria x ananassa)",
+      "unidad_rendimiento": "t/ha fruto fresco",
+      "extraccion_por_tonelada": { "N": 2.2, "P": 0.8, "K": 3.0 },
+      "preferencia_fuentes": ["acido_fosforico", "nk_nitrato_potasio", "uan32"],
+      "referencias_extraccion": ["intagri_curvas"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "Cultivo sensible a sales: fertirriego fraccionado. Nitrato de potasio favorece brix y firmeza. Ajustar por sistema (macrotuneles).",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento",
+          "bbch_inicio": "00",
+          "bbch_fin": "19",
+          "descripcion": "Traslante de plantula a prendimiento",
+          "curva_pct_acumulada": { "N": 8, "P": 7, "K": 6 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo vegetativo",
+          "bbch_inicio": "20",
+          "bbch_fin": "49",
+          "descripcion": "Emision de hojas y coronas",
+          "curva_pct_acumulada": { "N": 35, "P": 30, "K": 28 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 3,
+          "nombre": "Floracion y cuajado",
+          "bbch_inicio": "50",
+          "bbch_fin": "69",
+          "descripcion": "Floraciones sucesivas y amarre inicial",
+          "curva_pct_acumulada": { "N": 68, "P": 62, "K": 58 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 4,
+          "nombre": "Cosecha de frutos",
+          "bbch_inicio": "70",
+          "bbch_fin": "89",
+          "descripcion": "Cosechas escalonadas hasta fin de ciclo",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "bertsch2016"
+        }
+      ]
+    },
+    {
+      "id": "lechuga",
+      "nombre": "Lechuga (Lactuca sativa)",
+      "unidad_rendimiento": "t/ha peso fresco",
+      "extraccion_por_tonelada": { "N": 2.5, "P": 0.8, "K": 3.0 },
+      "preferencia_fuentes": ["map", "nk_nitrato_potasio", "urea"],
+      "referencias_extraccion": ["bertsch2016"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "Ciclo corto; evitar exceso de N al final para reducir nitratos en hoja. Sensible a deficiencia de Ca en tip burn.",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento",
+          "bbch_inicio": "00",
+          "bbch_fin": "09",
+          "descripcion": "Germinacion/traslante a plántula",
+          "curva_pct_acumulada": { "N": 8, "P": 6, "K": 6 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo de hojas",
+          "bbch_inicio": "10",
+          "bbch_fin": "39",
+          "descripcion": "Roseta y crecimiento foliar activo",
+          "curva_pct_acumulada": { "N": 45, "P": 38, "K": 35 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 3,
+          "nombre": "Cierre del cogollo",
+          "bbch_inicio": "40",
+          "bbch_fin": "45",
+          "descripcion": "Formacion y llenado de la cabeza",
+          "curva_pct_acumulada": { "N": 85, "P": 78, "K": 72 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 4,
+          "nombre": "Madurez de cosecha",
+          "bbch_inicio": "46",
+          "bbch_fin": "49",
+          "descripcion": "Compactacion del cogollo a corte",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "bertsch2016"
+        }
+      ]
+    },
+    {
+      "id": "papa",
+      "nombre": "Papa (Solanum tuberosum)",
+      "unidad_rendimiento": "t/ha tuberculo fresco",
+      "extraccion_por_tonelada": { "N": 5.5, "P": 2.5, "K": 10.0 },
+      "preferencia_fuentes": ["map", "kcl", "urea"],
+      "referencias_extraccion": ["intagri_curvas"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "Cultivo extractor de K por excelencia; el pico de absorcion coincide con tuberizacion. Evitar Cl excesivo en suelos salinos (usar sulfato de K).",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Brotacion y emergencia",
+          "bbch_inicio": "00",
+          "bbch_fin": "19",
+          "descripcion": "Brote a emergencia y primeras hojas",
+          "curva_pct_acumulada": { "N": 10, "P": 8, "K": 10 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo vegetativo e inicio de tuberizacion",
+          "bbch_inicio": "20",
+          "bbch_fin": "40",
+          "descripcion": "Ramificacion a inicio de engrosamiento de estolones",
+          "curva_pct_acumulada": { "N": 55, "P": 45, "K": 50 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 3,
+          "nombre": "Llenado de tuberculo",
+          "bbch_inicio": "41",
+          "bbch_fin": "79",
+          "descripcion": "Engrosamiento activo; maxima demanda de K",
+          "curva_pct_acumulada": { "N": 90, "P": 85, "K": 88 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 4,
+          "nombre": "Maduracion",
+          "bbch_inicio": "80",
+          "bbch_fin": "99",
+          "descripcion": "Madurez fisiologica y secado de follaje",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "bertsch2016"
+        }
+      ]
+    },
+    {
+      "id": "sandia",
+      "nombre": "Sandia (Citrullus lanatus)",
+      "unidad_rendimiento": "t/ha fruto fresco",
+      "extraccion_por_tonelada": { "N": 2.6, "P": 1.2, "K": 4.6 },
+      "preferencia_fuentes": ["acido_fosforico", "kcl", "uan32"],
+      "referencias_extraccion": ["bertsch2016", "intagri_curvas"],
+      "referencias_modelo": ["stanford1973"],
+      "notas": "El K se acumula fuertemente en follaje y fruto (Bertsch); no descuidar aporte tardio. Preferencia de fuentes: fertirriego.",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento",
+          "bbch_inicio": "00",
+          "bbch_fin": "19",
+          "descripcion": "Siembra/traslante a guias iniciales",
+          "curva_pct_acumulada": { "N": 7, "P": 6, "K": 5 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 2,
+          "nombre": "Desarrollo vegetativo",
+          "bbch_inicio": "20",
+          "bbch_fin": "49",
+          "descripcion": "Expansion de guias a boton floral",
+          "curva_pct_acumulada": { "N": 32, "P": 26, "K": 22 },
+          "referencia_curva": "intagri_curvas"
+        },
+        {
+          "orden": 3,
+          "nombre": "Floracion y cuajado",
+          "bbch_inicio": "50",
+          "bbch_fin": "69",
+          "descripcion": "Floracion femenina y amarre",
+          "curva_pct_acumulada": { "N": 60, "P": 52, "K": 48 },
+          "referencia_curva": "bertsch2016"
+        },
+        {
+          "orden": 4,
+          "nombre": "Llenado y maduracion de fruto",
+          "bbch_inicio": "70",
+          "bbch_fin": "89",
+          "descripcion": "Engorde de fruto a madurez comercial",
+          "curva_pct_acumulada": { "N": 100, "P": 100, "K": 100 },
+          "referencia_curva": "bertsch2016"
+        }
+      ]
+    }
+  ],
+  "eficiencias_default": { "N": 0.60, "P": 0.25, "K": 0.50 },
+  "modelo_dosis": "Dosis = (Demanda - AporteSuelo) / ERF (Stanford, 1973)"
+}
