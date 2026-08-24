@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -203,13 +205,16 @@ def estado_gnn():
 class PrediccionGnn(BaseModel):
     extraccion_por_t: dict
     num_fases: int = Field(4, ge=2, le=12)
+    familia: Optional[str] = None
 
 
 @app.post("/api/gnn/predecir")
 def predecir_gnn(req: PrediccionGnn):
     try:
         return gnn_mod.predecir_curva(
-            extraccion_por_t=req.extraccion_por_t, num_fases=req.num_fases
+            extraccion_por_t=req.extraccion_por_t,
+            num_fases=req.num_fases,
+            familia=(req.familia or "").strip() or None,
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
