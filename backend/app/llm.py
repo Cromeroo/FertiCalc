@@ -97,6 +97,25 @@ HERRAMIENTAS = [
                 },
             },
             {
+                "name": "extraccion_referencia_familia",
+                "description": (
+                    "Devuelve la extraccion de nutrientes PROMEDIO (kg/t de N, P2O5 y K2O) "
+                    "de los cultivos de una familia botanica del catalogo. Util para estimar "
+                    "los valores de entrada de predecir_curva_gnn o plan_cultivo_personalizado "
+                    "cuando el usuario no conoce la extraccion de su cultivo."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "familia": {
+                            "type": "STRING",
+                            "description": "solanaceae, poaceae, cucurbitaceae, rosaceae o asteraceae",
+                        },
+                    },
+                    "required": ["familia"],
+                },
+            },
+            {
                 "name": "plan_cultivo_personalizado",
                 "description": (
                     "Genera el PLAN COMPLETO de fertilizacion (kg/ha por fase, fuentes sugeridas) para un "
@@ -261,6 +280,11 @@ def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
             num_fases=args.get("num_fases"),
             familia=(args.get("familia") or "").strip() or None,
         )
+
+    if nombre == "extraccion_referencia_familia":
+        from .gnn import resumen_familia
+
+        return resumen_familia(args["familia"])
 
     if nombre == "plan_cultivo_personalizado":
         from .gnn import plan_desde_prediccion

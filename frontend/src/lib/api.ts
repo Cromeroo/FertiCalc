@@ -227,6 +227,18 @@ export async function generarPlanGnn(payload: {
   return data as PlanGnnRespuesta
 }
 
+export interface ReferenciaFamilia {
+  familia: string
+  num_cultivos: number
+  cultivos: Array<{ id: string; nombre: string }>
+  extraccion_kg_t: Record<'N' | 'P' | 'K', { promedio: number; min: number; max: number }>
+  nota: string
+}
+
+export async function referenciaFamilia(familia: string): Promise<ReferenciaFamilia> {
+  return pedir(`/api/gnn/familia/${familia}`)
+}
+
 export interface EstadoGnn {
   entrenado: boolean
   arquitectura?: string

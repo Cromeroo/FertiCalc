@@ -21,12 +21,29 @@ export function LaboratorioGnn() {
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState<PlanGnnRespuesta | null>(null)
   const [mae, setMae] = useState<number | null>(null)
+  const [fuenteValores, setFuenteValores] = useState('')
 
   useEffect(() => {
     api.estadoGnn().then(e => {
       if (e.metricas_loo?.mae_global) setMae(e.metricas_loo.mae_global)
     }).catch(() => {})
   }, [])
+
+  async function usarPromedioFamilia() {
+    try {
+      const ref = await api.referenciaFamilia(familia)
+      setExt({
+        N: String(ref.extraccion_kg_t.N.promedio),
+        P: String(ref.extraccion_kg_t.P.promedio),
+        K: String(ref.extraccion_kg_t.K.promedio)
+      })
+      setFuenteValores(
+        `Promedio de ${ref.num_cultivos} cultivos de la familia (${ref.cultivos.map(c => c.id).join(', ')}). Rango N: ${ref.extraccion_kg_t.N.min}–${ref.extraccion_kg_t.N.max} kg/t.`
+      )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sin referencia para esa familia')
+    }
+  }
 
   async function predecir(e: React.FormEvent) {
     e.preventDefault()
@@ -80,13 +97,20 @@ export function LaboratorioGnn() {
               <Input id="gnn-k" type="number" min="0.01" step="0.1" value={ext.K}
                 onChange={e => setExt({ ...ext, K: e.target.value })} required />
             </div>
+            <Button type="button" variant="ghost" size="sm" onClick={usarPromedioFamilia}>
+              No tengo datos: usar promedio de la familia
+            </Button>
+          </div>
+          <p className="-mt-1 text-[10px] text-muted-foreground">
+            ¿De dónde salen estos valores? De un análisis de tejido a la cosecha, de tablas de extracción del cultivo, o usa el promedio de su familia arriba.
+            {fuenteValores && <span className="block mt-0.5 text-primary">{fuenteValores}</span>}
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
             <div className="w-28">
               <Label htmlFor="gnn-rend">t/ha esperadas</Label>
               <Input id="gnn-rend" type="number" min="0.1" step="1" value={rendimiento}
                 onChange={e => setRendimiento(e.target.value)} required />
             </div>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
             <div className="w-44">
               <Label htmlFor="gnn-familia">Familia botánica</Label>
               <Select id="gnn-familia" value={familia} onChange={e => setFamilia(e.target.value)}>

@@ -335,6 +335,36 @@ def predecir_curva(extraccion_por_t: dict, num_fases: int = 4, familia: Optional
 
 
 
+def resumen_familia(familia: str) -> dict:
+    with open(DATA_PATH, encoding="utf-8") as f:
+        catalogo = json.load(f)
+    objetivo = (familia or "").strip().lower()
+    miembros = [c for c in catalogo["cultivos"] if c.get("familia") == objetivo]
+    if not miembros:
+        disponibles = sorted({c.get("familia") for c in catalogo["cultivos"]})
+        raise ValueError(
+            f"Familia '{objetivo}' sin cultivos en el catalogo. Disponibles: {disponibles}"
+        )
+    claves = ["N", "P", "K"]
+    def _stats(k):
+        vals = [c["extraccion_por_tonelada"][k] for c in miembros]
+        return {
+            "promedio": round(sum(vals) / len(vals), 2),
+            "min": round(min(vals), 2),
+            "max": round(max(vals), 2),
+        }
+    return {
+        "familia": objetivo,
+        "num_cultivos": len(miembros),
+        "cultivos": [{"id": c["id"], "nombre": c["nombre"]} for c in miembros],
+        "extraccion_kg_t": {k: _stats(k) for k in claves},
+        "nota": (
+            "Promedios del catalogo como punto de partida. Refinar con analisis "
+            "de tejido del cultivo objetivo cuando esté disponible."
+        ),
+    }
+
+
 def plan_desde_prediccion(
     kb,
     extraccion_por_t: dict,

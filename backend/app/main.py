@@ -220,6 +220,14 @@ def predecir_gnn(req: PrediccionGnn):
         raise HTTPException(400, str(e))
 
 
+@app.get("/api/gnn/familia/{familia}")
+def referencia_familia(familia: str):
+    try:
+        return gnn_mod.resumen_familia(familia)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+
+
 class PlanPersonalizadoRequest(BaseModel):
     extraccion_por_t: dict
     rendimiento_t_ha: float = Field(..., gt=0)
