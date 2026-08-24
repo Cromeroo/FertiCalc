@@ -29,6 +29,17 @@ def init_db():
             )
             """
         )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS feedback (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rating INTEGER NOT NULL,
+                comentario TEXT DEFAULT '',
+                origen TEXT DEFAULT 'chat',
+                fecha TEXT NOT NULL
+            )
+            """
+        )
 
 
 def guardar_plan(nombre: str, cultivo_id: str, cultivo_nombre: str, rendimiento: float, recomendacion: dict) -> str:
@@ -71,6 +82,24 @@ def eliminar_plan(plan_id: str) -> bool:
     with _conn() as c:
         cur = c.execute("DELETE FROM planes WHERE id = ?", (plan_id,))
     return cur.rowcount > 0
+
+
+def guardar_feedback(rating: int, comentario: str, origen: str) -> int:
+    with _conn() as c:
+        cur = c.execute(
+            "INSERT INTO feedback (rating, comentario, origen, fecha) VALUES (?, ?, ?, ?)",
+            (rating, comentario, origen, datetime.now(timezone.utc).isoformat()),
+        )
+    return cur.lastrowid
+
+
+def listar_feedback(limite: int = 200) -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT id, rating, comentario, origen, fecha FROM feedback ORDER BY fecha DESC LIMIT ?",
+            (limite,),
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 init_db()

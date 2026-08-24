@@ -1,0 +1,206 @@
+import os
+from typing import Optional
+
+import requests
+
+from .engine import calcular_recomendacion
+from .schemas import AnalisisSuelo, SolicitudRecomendacion
+
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
+MAX_ITERACIONES = 4
+
+HERRAMIENTAS = [
+    {
+        "function_declarations": [
+            {
+                "name": "listar_cultivos",
+                "description": "Lista los cultivos disponibles en el catalogo de FertiCalc con su unidad de rendimiento.",
+                "parameters": {"type": "OBJECT", "properties": {}},
+            },
+            {
+                "name": "obtener_cultivo",
+                "description": "Devuelve fases fenologicas BBCH, curvas de absorcion acumulada por nutriente y referencias bibliograficas de un cultivo.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {"cultivo_id": {"type": "STRING"}},
+                    "required": ["cultivo_id"],
+                },
+            },
+            {
+                "name": "listar_fuentes",
+                "description": "Lista fuentes de fertilizante disponibles con su composicion porcentual de N, P2O5 y K2O.",
+                "parameters": {"type": "OBJECT", "properties": {}},
+            },
+            {
+                "name": "calcular_recomendacion",
+                "description": (
+                    "Calcula el plan de fertilizacion determinista (kg/ha por nutriente y fase BBCH) "
+                    "con fuentes sugeridas y avisos. USAR SIEMPRE para cualquier cifra de dosis."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "cultivo_id": {"type": "STRING"},
+                        "rendimiento_t_ha": {"type": "NUMBER"},
+                        "n_disponible_kg_ha": {"type": "NUMBER"},
+                        "p2o5_disponible_kg_ha": {"type": "NUMBER"},
+                        "k2o_disponible_kg_ha": {"type": "NUMBER"},
+                        "fase_desde_orden": {
+                            "type": "INTEGER",
+                            "description": "Orden de fase desde la cual calcular (ciclos en curso). Opcional.",
+                        },
+                    },
+                    "required": ["cultivo_id", "rendimiento_t_ha"],
+                },
+            },
+        ]
+    }
+]
+
+PROMPT_SISTEMA = """Eres el asistente agronomico de FertiCalc, especializado en fertilizacion por fase fenologica.
+
+Reglas obligatorias:
+1. Para CUALQUIER cifra de dosis o recomendacion numerica debes llamar a la herramienta calcular_recomendacion. Nunca inventes ni estimes cifras por tu cuenta.
+2. Si el usuario pide un calculo pero falta el rendimiento esperado, pregunta el dato antes de llamar a la herramienta.
+3. Cuando la herramienta entregue referencias o avisos, mencionalos en tu respuesta (ej. "curva segun Bertsch 2016").
+4. Solo respondes sobre fertilizacion y nutricion de los cultivos del catalogo. Si preguntan plagas, riego u otro tema, indica amablemente que es fuera de tu alcance.
+5. Los cultivos tienen ids tecnicos (tomate, maiz, chile, fresa, lechuga, papa, sandia): usa listar_cultivos si el usuario no es claro.
+6. Responde en espanol, tono tecnico claro y conciso. Estructura: respuesta directa primero, detalle despues."""
+
+
+def chat(kb, mensaje: str, historial: Optional[list[dict]] = None) -> dict:
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not key:
+        raise ValueError(
+            "GEMINI_API_KEY no configurada. Crea backend/.env con GEMINI_API_KEY=tu_clave y reinicia la API."
+        )
+
+    modelo = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+    url = API_URL.format(modelo=modelo)
+
+    contents = []
+    for m in historial or []:
+        role = "user" if m.get("role") == "user" else "model"
+        contents.append({"role": role, "parts": [{"text": m.get("content", "")}]})
+    contents.append({"role": "user", "parts": [{"text": mensaje}]})
+
+    pasos: list[str] = []
+    recomendacion_full: Optional[dict] = None
+    respuesta_texto = ""
+
+    for _ in range(MAX_ITERACIONES):
+        resp = requests.post(
+            url,
+            params={"key": key},
+            json={
+                "system_instruction": {"parts": [{"text": PROMPT_SISTEMA}]},
+                "contents": contents,
+                "tools": HERRAMIENTAS,
+            },
+            timeout=60,
+        )
+        if resp.status_code != 200:
+            detalle = resp.json().get("error", {}).get("message", resp.text[:200])
+            raise ValueError(f"Gemini devolvio {resp.status_code}: {detalle}")
+
+        candidato = resp.json()["candidates"][0]["content"]
+        contents.append(candidato)
+
+        llamadas = [p["functionCall"] for p in candidato.get("parts", []) if "functionCall" in p]
+        if not llamadas:
+            respuesta_texto = next(
+                (p.get("text", "") for p in candidato.get("parts", []) if "text" in p),
+                "",
+            )
+            break
+
+        partes_respuesta = []
+        for llamada in llamadas:
+            nombre = llamada["name"]
+            args = llamada.get("args", {})
+            pasos.append(f"{nombre}({_resumir_args(args)})")
+            try:
+                resultado = _ejecutar_herramienta(kb, nombre, args)
+                if nombre == "calcular_recomendacion":
+                    recomendacion_full = resultado.pop("_full")
+            except Exception as e:
+                resultado = {"error": str(e)}
+            partes_respuesta.append(
+                {"functionResponse": {"name": nombre, "response": {"resultado": resultado}}}
+            )
+        contents.append({"role": "user", "parts": partes_respuesta})
+    else:
+        respuesta_texto = "Alcanze el limite de consultas internas. Intenta simplificar la pregunta."
+
+    return {"respuesta": respuesta_texto, "pasos": pasos, "recomendacion": recomendacion_full}
+
+
+def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
+    if nombre == "listar_cultivos":
+        return {"cultivos": kb.cultivos()}
+
+    if nombre == "obtener_cultivo":
+        cadena = kb.cadena_completa(args["cultivo_id"])
+        if not cadena:
+            return {"error": f"Cultivo no encontrado: {args['cultivo_id']}"}
+        c = cadena["cultivo"]
+        return {
+            "cultivo": c["nombre"],
+            "extraccion_por_tonelada": c["extraccion_por_tonelada"],
+            "fases": [
+                {
+                    "orden": f["orden"],
+                    "nombre": f["nombre"],
+                    "bbch": f"{f['bbch_inicio']}-{f['bbch_fin']}",
+                    "pct_acumulado": f["curva_pct_acumulada"],
+                    "cita": f["referencia_curva"],
+                }
+                for f in c["fases"]
+            ],
+        }
+
+    if nombre == "listar_fuentes":
+        return {"fuentes": kb.fuentes()}
+
+    if nombre == "calcular_recomendacion":
+        sol = SolicitudRecomendacion(
+            cultivo_id=args["cultivo_id"],
+            rendimiento_t_ha=float(args["rendimiento_t_ha"]),
+            analisis_suelo=AnalisisSuelo(
+                n_disponible_kg_ha=float(args.get("n_disponible_kg_ha") or 0),
+                p2o5_disponible_kg_ha=float(args.get("p2o5_disponible_kg_ha") or 0),
+                k2o_disponible_kg_ha=float(args.get("k2o_disponible_kg_ha") or 0),
+            ),
+            fase_desde_orden=args.get("fase_desde_orden"),
+        )
+        rec = calcular_recomendacion(kb, sol)
+        d = rec.model_dump()
+        return {
+            "_full": d,
+            "cultivo": d["cultivo_nombre"],
+            "dosis_total_kg_ha": d["dosis_fertilizante_kg_ha"],
+            "demanda_total_kg_ha": d["demanda_total_kg_ha"],
+            "aporte_suelo_kg_ha": d["aporte_suelo_kg_ha"],
+            "por_fase": [
+                {
+                    "fase": f["nombre"],
+                    "bbch": f["bbch"],
+                    "kg_ha": f["dosis_nutriente_kg_ha"],
+                    "fuentes": [
+                        {"nombre": s["nombre"], "kg_ha": s["kg_ha"]}
+                        for s in f["fuentes_sugeridas"]
+                    ],
+                }
+                for f in d["fases"]
+            ],
+            "avisos": [a for a in d["advertencias"] if a.startswith("[")],
+            "referencias": list(d.get("referencias", {}).keys()),
+        }
+
+    raise ValueError(f"Herramienta desconocida: {nombre}")
+
+
+def _resumir_args(args: dict) -> str:
+    claves = ["cultivo_id", "rendimiento_t_ha", "fase_desde_orden"]
+    resumen = {k: args[k] for k in claves if k in args}
+    return ", ".join(f"{k}={v}" for k, v in resumen.items()) or "…"

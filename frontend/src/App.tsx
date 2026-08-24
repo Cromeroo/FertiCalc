@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { FormularioLote, type ValoresFormulario } from '@/components/FormularioLote'
 import { Resultados } from '@/components/Resultados'
 import { PlanesGuardados } from '@/components/PlanesGuardados'
+import { Chat } from '@/components/Chat'
 import type { Fase, PlanResumen, Recomendacion } from '@/lib/api'
 
 const VALORES_INICIALES: ValoresFormulario = {
@@ -154,6 +155,8 @@ export default function App() {
             />
 
             {resultado && <Resultados data={resultado} onGuardado={recargarPlanes} />}
+
+            <Chat />
 
             <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
           </>

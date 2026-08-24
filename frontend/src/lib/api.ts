@@ -138,3 +138,39 @@ export async function eliminarPlan(id: string): Promise<void> {
   const r = await fetch(`/api/planes/${id}`, { method: 'DELETE' })
   if (!r.ok) throw new Error('No se pudo eliminar el plan')
 }
+
+export interface ChatMensaje {
+  role: 'user' | 'model'
+  content: string
+}
+
+export interface ChatRespuesta {
+  respuesta: string
+  pasos: string[]
+  recomendacion: Recomendacion | null
+}
+
+export async function enviarChat(mensaje: string, historial: ChatMensaje[]): Promise<ChatRespuesta> {
+  const r = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mensaje,
+      historial: historial.map(m => ({ role: m.role, content: m.content }))
+    })
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.detail ?? 'El asistente no está disponible')
+  return data as ChatRespuesta
+}
+
+export async function enviarFeedback(rating: number, comentario = '', origen = 'chat'): Promise<number> {
+  const r = await fetch('/api/feedback', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rating, comentario, origen })
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error('No se pudo registrar el feedback')
+  return data.id as number
+}

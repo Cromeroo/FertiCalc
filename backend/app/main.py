@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from . import db
 from .engine import calcular_recomendacion
 from .graph import get_knowledge
+from .llm import chat as llm_chat
 from .schemas import RecomendacionResponse, SolicitudRecomendacion
 
 app = FastAPI(
@@ -101,3 +102,43 @@ def eliminar_plan(plan_id: str):
     if not db.eliminar_plan(plan_id):
         raise HTTPException(404, "Plan no encontrado")
     return {"eliminado": plan_id}
+
+
+class ChatMensaje(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    mensaje: str = Field(..., min_length=1, max_length=4000)
+    historial: list[ChatMensaje] = []
+
+
+@app.post("/api/chat")
+def chat(req: ChatRequest):
+    kb = get_knowledge()
+    try:
+        return llm_chat(
+            kb,
+            req.mensaje,
+            [{"role": m.role, "content": m.content} for m in req.historial],
+        )
+    except ValueError as e:
+        raise HTTPException(503, str(e))
+
+
+class FeedbackRequest(BaseModel):
+    rating: int = Field(..., ge=-1, le=1)
+    comentario: str = Field("", max_length=2000)
+    origen: str = Field("chat", max_length=20)
+
+
+@app.post("/api/feedback")
+def crear_feedback(req: FeedbackRequest):
+    fid = db.guardar_feedback(req.rating, req.comentario, req.origen)
+    return {"id": fid}
+
+
+@app.get("/api/feedback")
+def ver_feedback(limite: int = 100):
+    return db.listar_feedback(min(max(limite, 1), 500))
