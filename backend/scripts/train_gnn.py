@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.gnn import (  # noqa: E402
     CAPAS_OCULTAS,
-    DIM_ENTRADA,
     PESOS_PATH,
     construir_grafo_conocimiento,
     matriz_adyacencia,
@@ -27,6 +26,7 @@ SEMILLA = 42
 def entrenar(grafo, mascara_entrenamiento=None):
     torch.manual_seed(SEMILLA)
     X_raw = np.array([n["x"] for n in grafo["nodos"]])
+    dim_entrada = X_raw.shape[1]
     X_std, media, desv = normalizar(X_raw)
     A_hat = torch.tensor(
         matriz_adyacencia(len(grafo["nodos"]), grafo["aristas"]), dtype=torch.float32
@@ -36,7 +36,7 @@ def entrenar(grafo, mascara_entrenamiento=None):
     def _param(*shape, escala=0.3):
         return torch.nn.Parameter(torch.randn(*shape) * escala)
 
-    w1 = _param(DIM_ENTRADA, CAPAS_OCULTAS)
+    w1 = _param(dim_entrada, CAPAS_OCULTAS)
     b1 = _param(CAPAS_OCULTAS, escala=0.0)
     w2 = _param(CAPAS_OCULTAS, CAPAS_OCULTAS)
     b2 = _param(CAPAS_OCULTAS, escala=0.0)
@@ -103,7 +103,8 @@ def main():
     _, pesos = entrenar(grafo)
     pesos["metricas_loo"] = {"mae_global": round(mae_global, 1), "por_cultivo": metricas_loo}
     pesos["entrenado_en"] = datetime.now(timezone.utc).isoformat()
-    pesos["arquitectura"] = f"gcn_2x{CAPAS_OCULTAS}_sigmoide"
+    pesos["arquitectura"] = f"gcn_familiar_2x{CAPAS_OCULTAS}_sigmoide"
+    pesos["familias"] = grafo.get("familias", [])
 
     PESOS_PATH.write_text(json.dumps(pesos), encoding="utf-8")
     print(f"Pesos exportados a {PESOS_PATH}")

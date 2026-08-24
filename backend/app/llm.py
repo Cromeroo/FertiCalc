@@ -84,6 +84,13 @@ HERRAMIENTAS = [
                         "extraccion_n_kg_t": {"type": "NUMBER"},
                         "extraccion_p2o5_kg_t": {"type": "NUMBER"},
                         "extraccion_k2o_kg_t": {"type": "NUMBER"},
+                        "familia": {
+                            "type": "STRING",
+                            "description": (
+                                "Familia botanica del cultivo (solanaceae, poaceae, "
+                                "cucurbitaceae, rosaceae, asteraceae). Mejora la precision."
+                            ),
+                        },
                         "num_fases": {"type": "INTEGER", "description": "Fases del ciclo (default 4)."},
                     },
                     "required": ["extraccion_n_kg_t", "extraccion_p2o5_kg_t", "extraccion_k2o_kg_t"],
@@ -224,6 +231,7 @@ def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
                 "K": args["extraccion_k2o_kg_t"],
             },
             num_fases=args.get("num_fases"),
+            familia=(args.get("familia") or "").strip() or None,
         )
 
     if nombre == "calcular_recomendacion":

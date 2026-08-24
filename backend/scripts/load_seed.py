@@ -138,5 +138,7 @@ def cargar(uri: str, user: str, password: str):
 if __name__ == "__main__":
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = os.getenv("NEO4J_USER", "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "ferticalc123")
+    password = os.getenv("NEO4J_PASSWORD")
+    if not password:
+        raise SystemExit("Define NEO4J_PASSWORD en el entorno o backend/.env antes de cargar la semilla.")
     cargar(uri, user, password)

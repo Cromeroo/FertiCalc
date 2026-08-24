@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as api from '@/lib/api'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -12,21 +12,29 @@ import type { RespuestaGnn } from '@/lib/api'
 
 const FASES = [2, 3, 4, 5, 6]
 
+const FAMILIAS = ['solanaceae', 'poaceae', 'cucurbitaceae', 'rosaceae', 'asteraceae']
+
 export function LaboratorioGnn() {
   const [ext, setExt] = useState({ N: '3', P: '1', K: '4' })
   const [fases, setFases] = useState(4)
+  const [familia, setFamilia] = useState('solanaceae')
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const [resultado, setResultado] = useState<RespuestaGnn | null>(null)
+  const [mae, setMae] = useState<number | null>(null)
+
+  useEffect(() => {
+    api.estadoGnn().then(e => {
+      if (e.metricas_loo?.mae_global) setMae(e.metricas_loo.mae_global)
+    }).catch(() => {})
+  }, [])
 
   async function predecir(e: React.FormEvent) {
     e.preventDefault()
     setCargando(true)
     setError('')
     try {
-      setResultado(
-        await api.predecirCurvaGnn({ N: Number(ext.N), P: Number(ext.P), K: Number(ext.K) }, fases)
-      )
+      setResultado(await api.predecirCurvaGnn({ N: Number(ext.N), P: Number(ext.P), K: Number(ext.K) }, fases, familia))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al predecir')
     } finally {
@@ -64,6 +72,12 @@ export function LaboratorioGnn() {
             <Input id="gnn-k" type="number" min="0.01" step="0.1" value={ext.K}
               onChange={e => setExt({ ...ext, K: e.target.value })} />
           </div>
+          <div className="w-36">
+            <Label htmlFor="gnn-familia">Familia botánica</Label>
+            <Select id="gnn-familia" value={familia} onChange={e => setFamilia(e.target.value)}>
+              {FAMILIAS.map(f => <option key={f} value={f}>{f}</option>)}
+            </Select>
+          </div>
           <div className="w-28">
             <Label htmlFor="gnn-fases">Fases</Label>
             <Select id="gnn-fases" value={fases} onChange={e => setFases(Number(e.target.value))}>
@@ -100,9 +114,7 @@ export function LaboratorioGnn() {
               </TBody>
             </Table>
             <div className="flex flex-wrap gap-1.5">
-              {resultado.modelo.metricas_loo_mae_puntos != null && (
-                <Badge>MAE leave-one-out: ±{resultado.modelo.metricas_loo_mae_puntos} pts</Badge>
-              )}
+              {mae != null && <Badge>MAE leave-one-out: ±{mae} pts</Badge>}
               {resultado.modelo.arquitectura && <Badge variant="outline">{resultado.modelo.arquitectura}</Badge>}
             </div>
             <Alert variant="warning">{resultado.advertencia}</Alert>

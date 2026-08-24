@@ -8,12 +8,15 @@ import numpy as np
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "seed_knowledge.json"
 PESOS_PATH = Path(__file__).resolve().parent.parent / "data" / "gnn_weights.json"
 
-DIM_ENTRADA = 6
+DIM_ENTRADA_BASE = 6
 CAPAS_OCULTAS = 16
 NUM_FASES_BASE = 4
+PESO_MISMA_FAMILIA = 1.0
+PESO_OTRA_FAMILIA = 1.0
 
 
-def _caracteristicas(orden_frac: float, bbch_ini: int, bbch_fin: int, ext: dict) -> list[float]:
+def _caracteristicas(orden_frac: float, bbch_ini: int, bbch_fin: int, ext: dict, familia_idx: int, num_familias: int) -> list[float]:
+    one_hot = [1.0 if i == familia_idx else 0.0 for i in range(num_familias)]
     return [
         orden_frac,
         min(bbch_ini, 99) / 99.0,
@@ -21,25 +24,30 @@ def _caracteristicas(orden_frac: float, bbch_ini: int, bbch_fin: int, ext: dict)
         math.log1p(ext["N"]),
         math.log1p(ext["P"]),
         math.log1p(ext["K"]),
-    ]
+    ] + one_hot
 
 
 def construir_grafo_conocimiento() -> dict:
     with open(DATA_PATH, encoding="utf-8") as f:
         datos = json.load(f)
 
+    familias = sorted({c.get("familia", "desconocida") for c in datos["cultivos"]})
     nodos = []
     for c in datos["cultivos"]:
+        fidx = familias.index(c.get("familia", "desconocida"))
         for fase in c["fases"]:
             nodos.append(
                 {
                     "cultivo_id": c["id"],
+                    "familia": c.get("familia", "desconocida"),
                     "orden": fase["orden"],
                     "x": _caracteristicas(
                         fase["orden"] / NUM_FASES_BASE,
                         int(fase["bbch_inicio"]),
                         int(fase["bbch_fin"]),
                         c["extraccion_por_tonelada"],
+                        fidx,
+                        len(familias),
                     ),
                     "y": [
                         fase["curva_pct_acumulada"]["N"] / 100.0,
@@ -55,11 +63,12 @@ def construir_grafo_conocimiento() -> dict:
             if i >= j:
                 continue
             if a["cultivo_id"] == b["cultivo_id"] and abs(a["orden"] - b["orden"]) == 1:
-                aristas.append((i, j))
+                aristas.append((i, j, PESO_MISMA_FAMILIA))
             elif a["cultivo_id"] != b["cultivo_id"] and a["orden"] == b["orden"]:
-                aristas.append((i, j))
+                peso = PESO_MISMA_FAMILIA if a["familia"] == b["familia"] else PESO_OTRA_FAMILIA
+                aristas.append((i, j, peso))
 
-    return {"nodos": nodos, "aristas": aristas}
+    return {"nodos": nodos, "aristas": aristas, "familias": familias}
 
 
 def normalizar(X: np.ndarray, media=None, desv=None):
@@ -69,11 +78,11 @@ def normalizar(X: np.ndarray, media=None, desv=None):
     return (X - media) / desv, media, desv
 
 
-def matriz_adyacencia(num_nodos: int, aristas: list[tuple[int, int]]) -> np.ndarray:
+def matriz_adyacencia(num_nodos: int, aristas: list[tuple[int, int, float]]) -> np.ndarray:
     A = np.eye(num_nodos)
-    for i, j in aristas:
-        A[i][j] = 1.0
-        A[j][i] = 1.0
+    for i, j, w in aristas:
+        A[i][j] = w
+        A[j][i] = w
     grados = A.sum(axis=1)
     D_inv_sqrt = 1.0 / np.sqrt(grados)
     return D_inv_sqrt[:, None] * A * D_inv_sqrt[None, :]
@@ -106,7 +115,7 @@ def cargar_pesos() -> Optional[dict]:
     return _pesos_cache
 
 
-def predecir_curva(extraccion_por_t: dict, num_fases: int = 4) -> dict:
+def predecir_curva(extraccion_por_t: dict, num_fases: int = 4, familia: Optional[str] = None) -> dict:
     pesos = cargar_pesos()
     if not pesos:
         raise ValueError(
@@ -115,8 +124,15 @@ def predecir_curva(extraccion_por_t: dict, num_fases: int = 4) -> dict:
     num_fases = max(2, min(int(num_fases or NUM_FASES_BASE), 12))
 
     grafo = construir_grafo_conocimiento()
+    familias: list[str] = pesos.get("familias") or grafo.get("familias", [])
+    familia_norm = (familia or "").strip().lower() or "desconocida"
+    if familia_norm in familias:
+        familia_idx = familias.index(familia_norm)
+    else:
+        familia_idx = -1
+
     nodos = grafo["nodos"]
-    aristas = [(i, j) for i, j in grafo["aristas"]]
+    aristas = [(i, j, w) for i, j, w in grafo["aristas"]]
 
     nuevos = []
     base = len(nodos)
@@ -132,7 +148,7 @@ def predecir_curva(extraccion_por_t: dict, num_fases: int = 4) -> dict:
             {
                 "cultivo_id": "_prediccion",
                 "orden": i,
-                "x": _caracteristicas(i / num_fases, ini, fin, ext),
+                "x": _caracteristicas(i / num_fases, ini, fin, ext, familia_idx, len(familias)),
             }
         )
 
@@ -143,7 +159,12 @@ def predecir_curva(extraccion_por_t: dict, num_fases: int = 4) -> dict:
         mas_cercano = min(ordenes_conocidos, key=lambda o: abs(o - frac))
         for j, n in enumerate(nodos):
             if n["orden"] / NUM_FASES_BASE == mas_cercano:
-                aristas.append((idx_real, j))
+                peso = (
+                    PESO_MISMA_FAMILIA
+                    if familia_idx >= 0 and n.get("familia") == familia_norm
+                    else PESO_OTRA_FAMILIA
+                )
+                aristas.append((idx_real, j, peso))
 
     todos = nodos + nuevos
     X_raw = np.array([n["x"] for n in todos])
@@ -175,6 +196,8 @@ def predecir_curva(extraccion_por_t: dict, num_fases: int = 4) -> dict:
 
     return {
         "extraccion_entrada_kg_t": ext,
+        "familia": familia_norm if familia_idx >= 0 else None,
+        "familia_reconocida": familia_idx >= 0,
         "num_fases": num_fases,
         "curva_predicha": curvas,
         "modelo": {

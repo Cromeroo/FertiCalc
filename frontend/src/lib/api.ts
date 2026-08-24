@@ -190,14 +190,26 @@ export interface RespuestaGnn {
   advertencia: string
 }
 
+export interface EstadoGnn {
+  entrenado: boolean
+  arquitectura?: string
+  entrenado_en?: string
+  metricas_loo?: { mae_global: number; por_cultivo: Record<string, { mae_puntos: number }> }
+}
+
+export async function estadoGnn(): Promise<EstadoGnn> {
+  return pedir('/api/gnn/estado')
+}
+
 export async function predecirCurvaGnn(
   extraccion_por_t: Record<string, number>,
-  num_fases = 4
+  num_fases = 4,
+  familia?: string
 ): Promise<RespuestaGnn> {
   const r = await fetch('/api/gnn/predecir', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ extraccion_por_t, num_fases })
+    body: JSON.stringify({ extraccion_por_t, num_fases, familia: familia || null })
   })
   const data = await r.json()
   if (!r.ok) throw new Error(data.detail ?? 'No se pudo predecir')

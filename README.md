@@ -18,7 +18,7 @@ MVP de recomendación de fertilización por fase fenológica (escala BBCH) con m
 - ✅ Chat LLM con function calling (Gemini) — el motor determinista calcula, el LLM explica
 - ✅ Feedback 👍/👎 para curación human-in-the-loop
 - ✅ **RAG literario**: PDFs/textos → embeddings e5 → índice vectorial DENTRO de Neo4j (grafo-first, sin vector DB externa); el chat cita fragmentos
-- ✅ **GNN PyTorch**: GCN 2×16 entrenada con validación leave-one-out (MAE ±8.8 pts); pesos exportados a JSON → inferencia sin torch; predice curvas de cultivos sin literatura (marcadas como IA no validada)
+- ✅ **GNN PyTorch**: GCN con feature de familia botánica, validación leave-one-out (**MAE ±5.9 pts**; maíz 29.7→8.2 tras añadirla); pesos exportados a JSON → inferencia sin torch; predice curvas de cultivos sin literatura (marcadas como IA no validada)
 - ✅ Frontend React con evidencia navegable (ver [frontend/SKILLS.md](frontend/SKILLS.md))
 
 ## Cómo correr
@@ -32,7 +32,7 @@ docker compose exec api python scripts/load_seed.py   # carga el grafo
 
 - Web: http://localhost:3000
 - API docs: http://localhost:8000/docs
-- Neo4j Browser: http://localhost:7474 (`neo4j` / `ferticalc123`)
+- Neo4j Browser: http://localhost:7474 (credenciales en el `.env` raíz, ver `.env.example`)
 
 ### Backend rápido sin Docker
 
