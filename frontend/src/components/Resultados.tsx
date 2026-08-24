@@ -15,7 +15,7 @@ const COLOR_KPI: Record<Nutriente, string> = {
   K: 'text-nutrient-k'
 }
 
-export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuardado: () => void }) {
+export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuardado?: () => void }) {
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState('')
 
@@ -26,7 +26,7 @@ export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuarda
     try {
       await api.guardarPlan(nombre, data)
       setMensaje(`Guardado como "${nombre}"`)
-      onGuardado()
+      onGuardado?.()
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'Error al guardar')
     } finally {

@@ -218,3 +218,28 @@ def predecir_gnn(req: PrediccionGnn):
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+class PlanPersonalizadoRequest(BaseModel):
+    extraccion_por_t: dict
+    rendimiento_t_ha: float = Field(..., gt=0)
+    num_fases: int = Field(4, ge=2, le=12)
+    familia: Optional[str] = None
+    analisis_suelo: Optional[dict] = None
+    eficiencias: Optional[dict] = None
+
+
+@app.post("/api/gnn/plan")
+def plan_gnn(req: PlanPersonalizadoRequest):
+    try:
+        return gnn_mod.plan_desde_prediccion(
+            get_knowledge(),
+            extraccion_por_t=req.extraccion_por_t,
+            num_fases=req.num_fases,
+            familia=(req.familia or "").strip() or None,
+            rendimiento_t_ha=req.rendimiento_t_ha,
+            analisis_suelo=req.analisis_suelo,
+            eficiencias=req.eficiencias,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))

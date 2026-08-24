@@ -3,6 +3,7 @@ import * as api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Markdown } from './Markdown'
 import type { ChatMensaje, ChatRespuesta } from '@/lib/api'
 
 interface MensajeUI {
@@ -77,7 +78,9 @@ export function Chat() {
                     : 'max-w-[90%] space-y-1.5 rounded-lg rounded-bl-sm border border-border bg-background px-3 py-2 text-xs leading-relaxed'
                 }
               >
-                <p className="whitespace-pre-wrap">{m.text}</p>
+                <p className="whitespace-pre-wrap">
+                  {m.role === 'assistant' ? <Markdown>{m.text}</Markdown> : m.text}
+                </p>
                 {m.role === 'assistant' && m.pasos && m.pasos.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1 pt-1">
                     {m.pasos.map((p, j) => (

@@ -96,6 +96,34 @@ HERRAMIENTAS = [
                     "required": ["extraccion_n_kg_t", "extraccion_p2o5_kg_t", "extraccion_k2o_kg_t"],
                 },
             },
+            {
+                "name": "plan_cultivo_personalizado",
+                "description": (
+                    "Genera el PLAN COMPLETO de fertilizacion (kg/ha por fase, fuentes sugeridas) para un "
+                    "cultivo sin curva publicada: primero predice la curva con GNN segun familia botanica y "
+                    "luego calcula dosis deterministas. Requiere rendimiento esperado."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "extraccion_n_kg_t": {"type": "NUMBER"},
+                        "extraccion_p2o5_kg_t": {"type": "NUMBER"},
+                        "extraccion_k2o_kg_t": {"type": "NUMBER"},
+                        "rendimiento_t_ha": {"type": "NUMBER"},
+                        "familia": {"type": "STRING"},
+                        "num_fases": {"type": "INTEGER"},
+                        "n_disponible_kg_ha": {"type": "NUMBER"},
+                        "p2o5_disponible_kg_ha": {"type": "NUMBER"},
+                        "k2o_disponible_kg_ha": {"type": "NUMBER"},
+                    },
+                    "required": [
+                        "extraccion_n_kg_t",
+                        "extraccion_p2o5_kg_t",
+                        "extraccion_k2o_kg_t",
+                        "rendimiento_t_ha",
+                    ],
+                },
+            },
         ]
     }
 ]
@@ -233,6 +261,33 @@ def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
             num_fases=args.get("num_fases"),
             familia=(args.get("familia") or "").strip() or None,
         )
+
+    if nombre == "plan_cultivo_personalizado":
+        from .gnn import plan_desde_prediccion
+
+        resultado = plan_desde_prediccion(
+            kb,
+            extraccion_por_t={
+                "N": args["extraccion_n_kg_t"],
+                "P": args["extraccion_p2o5_kg_t"],
+                "K": args["extraccion_k2o_kg_t"],
+            },
+            num_fases=args.get("num_fases"),
+            familia=(args.get("familia") or "").strip() or None,
+            rendimiento_t_ha=float(args["rendimiento_t_ha"]),
+            analisis_suelo={
+                "n_disponible_kg_ha": args.get("n_disponible_kg_ha") or 0,
+                "p2o5_disponible_kg_ha": args.get("p2o5_disponible_kg_ha") or 0,
+                "k2o_disponible_kg_ha": args.get("k2o_disponible_kg_ha") or 0,
+            },
+        )
+        plan = resultado["plan"].model_dump()
+        plan.pop("evidencia", None)
+        return {
+            "curva_predicha": resultado["prediccion"]["curva_predicha"],
+            "explicacion": resultado["prediccion"]["explicacion"],
+            "plan": plan,
+        }
 
     if nombre == "calcular_recomendacion":
         sol = SolicitudRecomendacion(

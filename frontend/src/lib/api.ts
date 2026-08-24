@@ -182,12 +182,49 @@ export interface CurvaPredicha {
   pct_acumulado: Record<string, number>
 }
 
+export interface ExplicacionGnn {
+  factores: Array<{ factor: string; influencia_pct: number }>
+  referencias_influyentes: Array<{
+    cultivo_id: string
+    nombre: string
+    familia?: string | null
+    apoyo_pct: number
+    curva_real: Array<{ orden: number; pct_acumulado: Record<string, number> }>
+  }>
+  razonamiento: string
+}
+
 export interface RespuestaGnn {
   extraccion_entrada_kg_t: Record<string, number>
+  familia?: string | null
+  familia_reconocida?: boolean
   num_fases: number
   curva_predicha: CurvaPredicha[]
+  explicacion?: ExplicacionGnn
   modelo: { arquitectura?: string; entrenado_en?: string; metricas_loo_mae_puntos?: number }
   advertencia: string
+}
+
+export interface PlanGnnRespuesta {
+  prediccion: RespuestaGnn
+  plan: Recomendacion
+}
+
+export async function generarPlanGnn(payload: {
+  extraccion_por_t: Record<string, number>
+  rendimiento_t_ha: number
+  num_fases?: number
+  familia?: string
+  analisis_suelo?: Record<string, number>
+}): Promise<PlanGnnRespuesta> {
+  const r = await fetch('/api/gnn/plan', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.detail ?? 'No se pudo generar el plan')
+  return data as PlanGnnRespuesta
 }
 
 export interface EstadoGnn {

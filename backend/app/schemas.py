@@ -46,6 +46,14 @@ class PasoEvidencia(BaseModel):
     referencia: Optional[str] = None
 
 
+class ReferenciaInfo(BaseModel):
+    id: str
+    autores: str = ""
+    anio: object = ""
+    titulo: str = ""
+    fuente: str = ""
+
+
 class RecomendacionResponse(BaseModel):
     cultivo_id: str
     cultivo_nombre: str
@@ -57,3 +65,4 @@ class RecomendacionResponse(BaseModel):
     fases: list[RecomendacionFase]
     evidencia: list[PasoEvidencia]
     advertencias: list[str]
+    referencias: Dict[str, ReferenciaInfo] = {}
