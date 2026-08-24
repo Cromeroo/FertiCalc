@@ -4,6 +4,8 @@ from typing import Optional
 import requests
 
 from .engine import calcular_recomendacion
+from .gnn import predecir_curva as gnn_predecir
+from .rag import get_rag
 from .schemas import AnalisisSuelo, SolicitudRecomendacion
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{modelo}:generateContent"
@@ -53,6 +55,40 @@ HERRAMIENTAS = [
                     "required": ["cultivo_id", "rendimiento_t_ha"],
                 },
             },
+            {
+                "name": "buscar_literatura",
+                "description": (
+                    "Busca en la base bibliografica interna (documentos cientificos ingeridos) "
+                    "fragmentos relevantes sobre nutricion vegetal. Usar para preguntas conceptuales "
+                    "o cuando el usuario pida respaldo de literatura."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "consulta": {"type": "STRING"},
+                        "k": {"type": "INTEGER", "description": "Numero de fragmentos (default 4)."},
+                    },
+                    "required": ["consulta"],
+                },
+            },
+            {
+                "name": "predecir_curva_gnn",
+                "description": (
+                    "PREDICCION EXPERIMENTAL con red neuronal de grafos: estima la curva de absorcion "
+                    "acumulada por fase para un cultivo SIN curvas publicadas, a partir de su extraccion "
+                    "por tonelada (N, P2O5, K2O kg/t). Etiquetar siempre el resultado como prediccion IA no validada."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "extraccion_n_kg_t": {"type": "NUMBER"},
+                        "extraccion_p2o5_kg_t": {"type": "NUMBER"},
+                        "extraccion_k2o_kg_t": {"type": "NUMBER"},
+                        "num_fases": {"type": "INTEGER", "description": "Fases del ciclo (default 4)."},
+                    },
+                    "required": ["extraccion_n_kg_t", "extraccion_p2o5_kg_t", "extraccion_k2o_kg_t"],
+                },
+            },
         ]
     }
 ]
@@ -65,7 +101,15 @@ Reglas obligatorias:
 3. Cuando la herramienta entregue referencias o avisos, mencionalos en tu respuesta (ej. "curva segun Bertsch 2016").
 4. Solo respondes sobre fertilizacion y nutricion de los cultivos del catalogo. Si preguntan plagas, riego u otro tema, indica amablemente que es fuera de tu alcance.
 5. Los cultivos tienen ids tecnicos (tomate, maiz, chile, fresa, lechuga, papa, sandia): usa listar_cultivos si el usuario no es claro.
-6. Responde en espanol, tono tecnico claro y conciso. Estructura: respuesta directa primero, detalle despues."""
+6. Responde en espanol, tono tecnico claro y conciso. Estructura: respuesta directa primero, detalle despues.
+7. Para preguntas conceptuales o de respaldo bibliografico usa buscar_literatura y cita el titulo del documento del fragmento. Si no hay resultados, dilo honestamente.
+8. Si ofreces una curva predicha con predecir_curva_gnn, dejara claro que es PREDICCION IA EXPERIMENTAL no validada experimentalmente."""
+
+
+def _driver_factory():
+    from .graph import get_driver
+
+    return get_driver
 
 
 def chat(kb, mensaje: str, historial: Optional[list[dict]] = None) -> dict:
@@ -161,6 +205,26 @@ def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
 
     if nombre == "listar_fuentes":
         return {"fuentes": kb.fuentes()}
+
+    if nombre == "buscar_literatura":
+        rag = get_rag(_driver_factory())
+        fragmentos = rag.buscar(args["consulta"], int(args.get("k") or 4))
+        if not fragmentos:
+            return {
+                "fragmentos": [],
+                "nota": "Sin resultados: probablemente no se han ingerido documentos todavia.",
+            }
+        return {"fragmentos": fragmentos}
+
+    if nombre == "predecir_curva_gnn":
+        return gnn_predecir(
+            extraccion_por_t={
+                "N": args["extraccion_n_kg_t"],
+                "P": args["extraccion_p2o5_kg_t"],
+                "K": args["extraccion_k2o_kg_t"],
+            },
+            num_fases=args.get("num_fases"),
+        )
 
     if nombre == "calcular_recomendacion":
         sol = SolicitudRecomendacion(

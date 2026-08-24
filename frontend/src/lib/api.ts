@@ -174,3 +174,32 @@ export async function enviarFeedback(rating: number, comentario = '', origen = '
   if (!r.ok) throw new Error('No se pudo registrar el feedback')
   return data.id as number
 }
+
+export interface CurvaPredicha {
+  orden: number
+  nombre: string
+  bbch: string
+  pct_acumulado: Record<string, number>
+}
+
+export interface RespuestaGnn {
+  extraccion_entrada_kg_t: Record<string, number>
+  num_fases: number
+  curva_predicha: CurvaPredicha[]
+  modelo: { arquitectura?: string; entrenado_en?: string; metricas_loo_mae_puntos?: number }
+  advertencia: string
+}
+
+export async function predecirCurvaGnn(
+  extraccion_por_t: Record<string, number>,
+  num_fases = 4
+): Promise<RespuestaGnn> {
+  const r = await fetch('/api/gnn/predecir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ extraccion_por_t, num_fases })
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(data.detail ?? 'No se pudo predecir')
+  return data as RespuestaGnn
+}

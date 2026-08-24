@@ -8,6 +8,7 @@ import { FormularioLote, type ValoresFormulario } from '@/components/FormularioL
 import { Resultados } from '@/components/Resultados'
 import { PlanesGuardados } from '@/components/PlanesGuardados'
 import { Chat } from '@/components/Chat'
+import { LaboratorioGnn } from '@/components/LaboratorioGnn'
 import type { Fase, PlanResumen, Recomendacion } from '@/lib/api'
 
 const VALORES_INICIALES: ValoresFormulario = {
@@ -157,6 +158,8 @@ export default function App() {
             {resultado && <Resultados data={resultado} onGuardado={recargarPlanes} />}
 
             <Chat />
+
+            <LaboratorioGnn />
 
             <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
           </>

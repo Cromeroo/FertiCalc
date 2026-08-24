@@ -24,6 +24,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/data:/app/data
+      - hf_cache:/root/.cache/huggingface
     depends_on:
       - neo4j
 
@@ -37,3 +38,4 @@ services:
 
 volumes:
   neo4j_data:
+  hf_cache:

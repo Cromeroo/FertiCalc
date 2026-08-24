@@ -210,15 +210,26 @@ class Neo4jKnowledge:
         return {"cultivo": c, "referencias": refs, "traza_grafo": rows[0]["resultado"]}
 
 
-def get_knowledge() -> object:
+def get_driver():
     uri = os.getenv("NEO4J_URI")
     user = os.getenv("NEO4J_USER", "neo4j")
     password = os.getenv("NEO4J_PASSWORD")
-    if uri and password:
-        try:
-            kb = Neo4jKnowledge(uri, user, password)
-            kb._driver.verify_connectivity()
-            return kb
-        except Exception:
-            pass
+    if not (uri and password):
+        return None
+    try:
+        from neo4j import GraphDatabase
+
+        driver = GraphDatabase.driver(uri, auth=(user, password))
+        driver.verify_connectivity()
+        return driver
+    except Exception:
+        return None
+
+
+def get_knowledge() -> object:
+    driver = get_driver()
+    if driver is not None:
+        kb = Neo4jKnowledge.__new__(Neo4jKnowledge)
+        kb._driver = driver
+        return kb
     return JsonKnowledge()

@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import db
+from . import db, gnn as gnn_mod
 from .engine import calcular_recomendacion
-from .graph import get_knowledge
+from .graph import get_driver, get_knowledge
 from .llm import chat as llm_chat
+from .rag import get_rag, ingestar_documento
 from .schemas import RecomendacionResponse, SolicitudRecomendacion
 
 app = FastAPI(
@@ -142,3 +143,73 @@ def crear_feedback(req: FeedbackRequest):
 @app.get("/api/feedback")
 def ver_feedback(limite: int = 100):
     return db.listar_feedback(min(max(limite, 1), 500))
+
+
+@app.get("/api/conocimiento/estado")
+def estado_conocimiento():
+    rag = get_rag(get_driver)
+    return {"modo": rag.modo(), "fragmentos": rag.total(), "modelo_embeddings": "multilingual-e5-small"}
+
+
+class IngestaTexto(BaseModel):
+    titulo: str = Field(..., min_length=1, max_length=200)
+    texto: str = Field(..., min_length=50)
+
+
+@app.post("/api/conocimiento/texto")
+def ingesta_texto(req: IngestaTexto):
+    resultado = ingestar_documento(get_rag(get_driver), req.titulo, texto=req.texto)
+    return resultado
+
+
+@app.post("/api/conocimiento/pdf")
+async def ingesta_pdf(archivo: UploadFile = File(...), titulo: str = Form("")):
+    bytes_pdf = await archivo.read()
+    if not bytes_pdf:
+        raise HTTPException(400, "Archivo vacio")
+    titulo_final = titulo or (archivo.filename or "documento").removesuffix(".pdf")
+    try:
+        return ingestar_documento(
+            get_rag(get_driver), titulo_final, pdf_bytes=bytes_pdf
+        )
+    except Exception as e:
+        raise HTTPException(400, f"No se pudo procesar el PDF: {e}")
+
+
+class BusquedaLiteratura(BaseModel):
+    consulta: str = Field(..., min_length=2)
+    k: int = Field(4, ge=1, le=10)
+
+
+@app.post("/api/conocimiento/buscar")
+def buscar_literatura(req: BusquedaLiteratura):
+    rag = get_rag(get_driver)
+    return {"consulta": req.consulta, "resultados": rag.buscar(req.consulta, req.k)}
+
+
+@app.get("/api/gnn/estado")
+def estado_gnn():
+    pesos = gnn_mod.cargar_pesos()
+    if not pesos:
+        return {"entrenado": False}
+    return {
+        "entrenado": True,
+        "arquitectura": pesos.get("arquitectura"),
+        "entrenado_en": pesos.get("entrenado_en"),
+        "metricas_loo": pesos.get("metricas_loo"),
+    }
+
+
+class PrediccionGnn(BaseModel):
+    extraccion_por_t: dict
+    num_fases: int = Field(4, ge=2, le=12)
+
+
+@app.post("/api/gnn/predecir")
+def predecir_gnn(req: PrediccionGnn):
+    try:
+        return gnn_mod.predecir_curva(
+            extraccion_por_t=req.extraccion_por_t, num_fases=req.num_fases
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))

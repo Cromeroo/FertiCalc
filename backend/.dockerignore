@@ -1,0 +1,6 @@
+.env
+data/ferticalc.db
+data/rag_*.json
+__pycache__/
+**/__pycache__/
+*.pyc

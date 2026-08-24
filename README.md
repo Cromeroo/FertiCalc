@@ -15,6 +15,10 @@ MVP de recomendación de fertilización por fase fenológica (escala BBCH) con m
 - ✅ Selección de fuentes preferidas **por cultivo** (fertirriego vs edáfico)
 - ✅ Reglas de antagonismo iónico evaluadas sobre la dosis final (K↔Ca/Mg, P↔Zn, fraccionamiento de N) con cita
 - ✅ Planes guardables en SQLite (CRUD completo)
+- ✅ Chat LLM con function calling (Gemini) — el motor determinista calcula, el LLM explica
+- ✅ Feedback 👍/👎 para curación human-in-the-loop
+- ✅ **RAG literario**: PDFs/textos → embeddings e5 → índice vectorial DENTRO de Neo4j (grafo-first, sin vector DB externa); el chat cita fragmentos
+- ✅ **GNN PyTorch**: GCN 2×16 entrenada con validación leave-one-out (MAE ±8.8 pts); pesos exportados a JSON → inferencia sin torch; predice curvas de cultivos sin literatura (marcadas como IA no validada)
 - ✅ Frontend React con evidencia navegable (ver [frontend/SKILLS.md](frontend/SKILLS.md))
 
 ## Cómo correr
@@ -56,6 +60,18 @@ npm run dev    # proxy /api -> localhost:8000
 | `GET /api/cadena/{id}` | Traza completa cultivo→fase→%extracción→cita |
 | `POST /api/recomendacion` | Plan de fertilización con árbol de evidencia y avisos de antagonismo |
 | `GET/POST /api/planes`, `GET/DELETE /api/planes/{id}` | Persistencia de planes |
+| `POST /api/chat` | Asistente LLM (function calling sobre el motor) |
+| `POST /api/feedback`, `GET /api/feedback` | Curación human-in-the-loop |
+| `POST /api/conocimiento/pdf` \| `/texto` | Ingesta de literatura al RAG vectorial en Neo4j |
+| `POST /api/conocimiento/buscar` | Búsqueda semántica en la biblioteca |
+| `GET /api/gnn/estado` · `POST /api/gnn/predecir` | Curvas predichas por GNN (experimental) |
+
+Entrenar la GNN tras ampliar el catálogo:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+python backend/scripts/train_gnn.py   # imprime métricas LOO y exporta data/gnn_weights.json
+```
 
 Ejemplo:
 
@@ -95,9 +111,10 @@ ferticalc/
 - [x] Ontología grafo (7 cultivos)
 - [x] Antagonismos y fuentes líquidas/sólidas por cultivo
 - [x] Persistencia de planes
-- [ ] Validación agronómica formal de curvas
-- [ ] Chat LLM vía function calling sobre este motor (Ollama local)
-- [ ] GNN (PyTorch Geometric) para predecir curvas de cultivos sin literatura
+- [x] Chat LLM vía function calling (Gemini, intercambiable por Qwen/Ollama)
+- [x] RAG literario con embeddings en Neo4j
+- [x] GNN PyTorch para predecir curvas de cultivos sin literatura
+- [ ] Validación agronómica formal de curvas y ampliación del catálogo
 - [ ] Micronutrientes (Ca, Mg, S, Zn) y salinidad
 
 ## Advertencia
