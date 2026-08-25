@@ -13,6 +13,7 @@ import type { PlanGnnRespuesta, RespuestaGnn } from '@/lib/api'
 const FAMILIAS = ['solanaceae', 'poaceae', 'cucurbitaceae', 'rosaceae', 'asteraceae']
 
 export function LaboratorioGnn() {
+  const [nombreCultivo, setNombreCultivo] = useState('')
   const [familia, setFamilia] = useState('solanaceae')
   const [ext, setExt] = useState({ N: '', P: '', K: '' })
   const [rendimiento, setRendimiento] = useState('30')
@@ -77,58 +78,60 @@ export function LaboratorioGnn() {
           Cultivos nuevos — curva y plan estimados
           <Badge variant="warning">experimental · IA</Badge>
         </CardTitle>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Para cultivos <strong className="text-foreground">que no están en el catálogo</strong> (sin curva publicada). Si tu cultivo sí está listado arriba, usa el formulario principal — este laboratorio es solo para cultivos nuevos.
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-muted-foreground space-y-1">
-          <p className="font-medium text-foreground">¿Para qué sirve esto?</p>
-          <p>
-            Para sembrar un cultivo <strong className="text-foreground">sin curvas publicadas</strong>. La literatura científica rara vez documenta
-            <em> cuándo</em> el cultivo absorbe cada nutriente (requiere muestrear planta completa durante todo el ciclo); documentar <em>cuánto</em> extrae por tonelada sí es común.
-          </p>
-          <p><strong className="text-foreground">Cómo funciona:</strong></p>
+          <p className="font-medium text-foreground">¿Cómo funciona? No necesitas saber fertilizantes de antemano</p>
           <ol className="list-decimal pl-4 space-y-0.5">
-            <li>Eliges la familia botánica — conecta tu cultivo con parientes del grafo cuyo comportamiento conocemos.</li>
-            <li>El sistema sugiere su extracción típica (ajústala si tienes análisis de tejido propio).</li>
-            <li>La IA predice la distribución por fase y el motor determinista convierte eso en un plan de kg/ha con fuentes y evidencia.</li>
+            <li><strong className="text-foreground">Escribe tu cultivo y elige su familia</strong> — el sistema busca parientes con curvas conocidas.</li>
+            <li><strong className="text-foreground">La extracción biológica se sugiere sola</strong> — es cuánto el cultivo <em>extrae</em> por tonelada (no lo que aplicarás). Si tienes análisis propio, ajústala.</li>
+            <li>La IA predice <em>cuándo</em> lo absorbe y el motor calcula <strong className="text-foreground">cuánto fertilizante aplicar por fase</strong>.</li>
           </ol>
         </div>
 
         <form onSubmit={predecir} className="space-y-3">
-          <div className="max-w-sm">
-            <Label htmlFor="gnn-familia" >
-              1. Familia botánica de tu cultivo
-            </Label>
-            <Select id="gnn-familia" value={familia} onChange={e => { setFamilia(e.target.value); setEditadoManual(false) }}>
-              {FAMILIAS.map(f => <option key={f} value={f}>{f}</option>)}
-            </Select>
+          <div className="flex flex-wrap gap-2">
+            <div className="flex-1 min-w-[180px]">
+              <Label htmlFor="gnn-nombre">1. Nombre de tu cultivo (opcional)</Label>
+              <Input id="gnn-nombre" placeholder="ej: cocona, lulo, quinua" value={nombreCultivo}
+                onChange={e => setNombreCultivo(e.target.value)} />
+            </div>
+            <div className="w-44">
+              <Label htmlFor="gnn-familia">Familia botánica *</Label>
+              <Select id="gnn-familia" value={familia} onChange={e => { setFamilia(e.target.value); setEditadoManual(false) }}>
+                {FAMILIAS.map(f => <option key={f} value={f}>{f}</option>)}
+              </Select>
+              <p className="mt-1 text-[10px] text-muted-foreground">Define a qué parientes del grafo se conecta</p>
+            </div>
           </div>
 
           <div>
-            <Label>2. Extracción del cultivo (kg por tonelada cosechada)</Label>
+            <Label>2. Extracción biológica del cultivo — <span className="font-normal">se sugiere automáticamente al elegir familia</span></Label>
+            <p className="mb-1.5 text-[10px] text-muted-foreground">No es fertilizante. Es cuánto la planta extrae por tonelada cosechada. El laboratorio calculará el fertilizante por ti.</p>
             <div className="flex flex-wrap items-end gap-2">
-              <div className="w-24">
+              <div className="w-28">
                 <Input id="gnn-n" type="number" min="0.01" step="0.1" value={ext.N}
                   aria-label="Extracción de nitrógeno kg/t"
                   onChange={e => { setExt({ ...ext, N: e.target.value }); setEditadoManual(true) }} required />
-                <p className="mt-1 text-[10px] text-muted-foreground">N</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">N extraído (kg/t)</p>
               </div>
-              <div className="w-24">
+              <div className="w-28">
                 <Input id="gnn-p" type="number" min="0.01" step="0.1" value={ext.P}
                   aria-label="Extracción de fósforo kg/t"
                   onChange={e => { setExt({ ...ext, P: e.target.value }); setEditadoManual(true) }} required />
-                <p className="mt-1 text-[10px] text-muted-foreground">P₂O₅</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">P₂O₅ extraído (kg/t)</p>
               </div>
-              <div className="w-24">
+              <div className="w-28">
                 <Input id="gnn-k" type="number" min="0.01" step="0.1" value={ext.K}
                   aria-label="Extracción de potasio kg/t"
                   onChange={e => { setExt({ ...ext, K: e.target.value }); setEditadoManual(true) }} required />
-                <p className="mt-1 text-[10px] text-muted-foreground">K₂O</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">K₂O extraído (kg/t)</p>
               </div>
             </div>
-            {fuenteValores && <p className="mt-1 text-[10px] text-primary">{fuenteValores}</p>}
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              ¿De dónde sacarlos? Análisis de tejido a la cosecha, tablas de extracción del cultivo, o deja los sugeridos.
-            </p>
+            {fuenteValores && <p className="mt-2 rounded bg-primary/10 px-2 py-1 text-[10px] text-primary">{fuenteValores}</p>}
           </div>
 
           <div className="flex flex-wrap items-end gap-2">
