@@ -119,15 +119,15 @@ Puertos: `3000:80`.
 
 ```mermaid
 flowchart LR
-    S[SolicitudRecomendacion] -->|extrae| P[Por nutriente N,P,K]
-    P -->|demanda = ext * rend| D[demanda_total]
-    P -->|neto = max(0, demanda - suelo)| N[requerimiento_neto]
-    N -->|dosis = neto / ERF| Z[dosis_total]
-    Z -->|reparte por fase segun curva_pct| F[RecomendacionFase x4]
-    F -->|prioridad cultivo + dominante| S2[Fuentes sugeridas]
-    S2 -->|carga reglas| R[ReglasAntagonismo]
-    R -->|evalua ratio/umbral| AV[Advertencias]
-    F --> E[Evidencia con fórmula y cita]
+    S[SolicitudRecomendacion] --> P[Por nutriente N P K]
+    P --> D["demanda_total = extraccion_por_t x rendimiento"]
+    P --> N["requerimiento_neto = max 0 y demanda menos suelo"]
+    N --> Z["dosis_total = requerimiento_neto / ERF"]
+    Z --> F[Reparto por fase segun curva_pct]
+    F --> S2[Fuentes sugeridas por prioridad de cultivo]
+    S2 --> R[Evalua reglas de antagonismo]
+    R --> AV[Advertencias con cita]
+    F --> E[Evidencia con formula y cita]
 ```
 
 Salida: `RecomendacionResponse` (Pydantic v2, ver `schemas.py`) que la API serializa directo a JSON.
@@ -225,21 +225,22 @@ Esquema (constraints únicos en `id`):
 
 ```mermaid
 graph LR
-    C[Cultivo<br/>nombre, unidad, extraccion_N/P/K, preferencia_fuentes, notas]
-    F[FaseFenologica<br/>nombre, bbch_ini, bbch_fin]
-    N[Nutriente<br/>N | P | K]
-    R[Referencia<br/>autores, anio, titulo, fuente]
-    S[FuenteFertilizante<br/>nombre, tipo]
-    G[ReglaAntagonismo<br/>tipo, base, nutriente_ref, factor, umbral, mensaje]
-    FR[Fragmento<br/>titulo, texto, embedding(384), fecha]
+    C["Cultivo: nombre, unidad, extraccion N P K, preferencia_fuentes, notas"]
+    F["FaseFenologica: nombre, bbch_ini, bbch_fin"]
+    N["Nutriente: N o P o K"]
+    R["Referencia: autores, anio, titulo, fuente"]
+    S["FuenteFertilizante: nombre, tipo"]
+    G["ReglaAntagonismo: tipo, base, factor, umbral, mensaje"]
+    FR["Fragmento: titulo, texto, embedding 384 dim, fecha"]
 
     C -->|TIENE_FASE| F
-    F -->|EXTRAE {pct, fuente_ref}| N
+    F -->|EXTRAE pct fuente_ref| N
     C -->|DOCUMENTADO_POR| R
-    S -->|APORTA {pct}| N
+    S -->|APORTA pct| N
     G -->|DOCUMENTADO_POR| R
-    FR -.->|vector index| FR
 ```
+
+Los nodos `Fragmento` tienen un **índice vectorial** (vector de 384 dimensiones sobre el campo `embedding`) creado en el primer `RagNeo4j.preparar_indice()`.
 
 Carga inicial: `docker compose exec api python scripts/load_seed.py` (idempotente con MERGE).
 
