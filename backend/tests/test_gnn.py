@@ -3,6 +3,25 @@ import pytest
 from app.gnn import plan_desde_prediccion, predecir_curva, resumen_familia
 
 
+class TestMetricas:
+    def test_pesos_compactos_son_2x16(self):
+        from app.gnn import cargar_pesos
+
+        pesos = cargar_pesos()
+        assert len(pesos["W1"]) == 11 and len(pesos["W1"][0]) == 16
+        assert len(pesos["W2"]) == 16 and len(pesos["W2"][0]) == 16
+        assert len(pesos["W3"]) == 16 and len(pesos["W3"][0]) == 3
+
+    def test_metadatos_v2_presentes(self):
+        from app.gnn import cargar_pesos
+
+        pesos = cargar_pesos()
+        assert "reg_mono_ensemble" in pesos.get("arquitectura", "")
+        assert "dispositivo_entrenamiento" in pesos
+        mae = pesos.get("metricas_loo", {}).get("mae_global")
+        assert isinstance(mae, (int, float)) and 0 < mae < 31.6
+
+
 class TestPrediccion:
     def test_pesos_entrenados_cargan(self):
         from app.gnn import cargar_pesos

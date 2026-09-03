@@ -95,6 +95,12 @@ def forward_np(X: np.ndarray, A_hat: np.ndarray, pesos: dict) -> np.ndarray:
     b2 = np.array(pesos["b2"])
     w3 = np.array(pesos["W3"])
     b3 = np.array(pesos["b3"])
+    w1 = np.array(pesos["W1"])
+    b1 = np.array(pesos["b1"])
+    w2 = np.array(pesos["W2"])
+    b2 = np.array(pesos["b2"])
+    w3 = np.array(pesos["W3"])
+    b3 = np.array(pesos["b3"])
 
     h = np.maximum(A_hat @ (X @ w1 + b1), 0.0)
     h = np.maximum(A_hat @ (h @ w2 + b2), 0.0)
