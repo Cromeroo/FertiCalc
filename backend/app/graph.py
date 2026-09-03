@@ -77,6 +77,7 @@ class Neo4jKnowledge:
             OPTIONAL MATCH (c)-[:TIENE_FASE]->(f:FaseFenologica)
             RETURN c.id AS id, c.nombre AS nombre,
                    c.unidad_rendimiento AS unidad_rendimiento,
+                   coalesce(c.familia, 'desconocida') AS familia,
                    count(f) AS fases
             ORDER BY c.nombre
             """
@@ -89,6 +90,7 @@ class Neo4jKnowledge:
             MATCH (c:Cultivo {id: $id})
             RETURN c.id AS id, c.nombre AS nombre,
                    c.unidad_rendimiento AS unidad_rendimiento,
+                   c.familia AS familia,
                    c.extraccion_N AS eN, c.extraccion_P AS eP, c.extraccion_K AS eK,
                    c.preferencia_fuentes AS preferencia_fuentes,
                    c.referencias_extraccion AS referencias_extraccion,
@@ -99,6 +101,7 @@ class Neo4jKnowledge:
         if not rows:
             return None
         row = rows[0]
+        row["familia"] = row.get("familia") or "desconocida"
         row["extraccion_por_tonelada"] = {
             "N": float(row.pop("eN")),
             "P": float(row.pop("eP")),

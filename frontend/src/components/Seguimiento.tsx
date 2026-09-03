@@ -17,8 +17,14 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
   const [detalle, setDetalle] = useState<EstadoSiembra | null>(null)
   const [planId, setPlanId] = useState('')
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
-  const [dias, setDias] = useState('20')
+  const [dias, setDias] = useState('')
+  const [familia, setFamilia] = useState('')
+  const [especie, setEspecie] = useState('')
+  const [filtro, setFiltro] = useState('')
   const [error, setError] = useState('')
+
+  const familiasDisponibles = [...new Set(siembras.map(s => s.familia).filter(Boolean))] as string[]
+  const visibles = filtro ? siembras.filter(s => s.familia === filtro) : siembras
 
   function recargar() {
     setEstado('cargando')
@@ -44,8 +50,11 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
     e.preventDefault()
     setError('')
     try {
-      const id = await api.crearSiembra(planId, fecha, Number(dias))
-      await abrir(id)
+      const res = await api.crearSiembra(
+        planId, fecha, dias ? Number(dias) : undefined, familia.trim().toLowerCase(), especie.trim()
+      )
+      setDias(String(res.dias_estimados_fase))
+      await abrir(res.id)
       recargar()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear la siembra')
@@ -92,9 +101,22 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
                 <Label htmlFor="seg-fecha">Fecha de siembra</Label>
                 <Input id="seg-fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} required />
               </div>
+              <div className="w-36">
+                <Label htmlFor="seg-familia">Familia (auto si se omite)</Label>
+                <Select id="seg-familia" value={familia} onChange={e => setFamilia(e.target.value)}>
+                  <option value="">Del plan</option>
+                  {['solanaceae', 'poaceae', 'cucurbitaceae', 'rosaceae', 'asteraceae'].map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-36">
+                <Label htmlFor="seg-especie">Especie / variedad</Label>
+                <Input id="seg-especie" placeholder="ej: tomate chonto" value={especie} onChange={e => setEspecie(e.target.value)} />
+              </div>
               <div className="w-28">
-                <Label htmlFor="seg-dias">Días por fase</Label>
-                <Input id="seg-dias" type="number" min="1" max="365" value={dias} onChange={e => setDias(e.target.value)} required />
+                <Label htmlFor="seg-dias">Días/fase (auto)</Label>
+                <Input id="seg-dias" type="number" min="1" max="365" placeholder="auto" value={dias} onChange={e => setDias(e.target.value)} />
               </div>
               <Button type="submit" size="sm" disabled={!planId}>Crear seguimiento</Button>
             </form>
@@ -104,14 +126,34 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
             {estado === 'listo' && siembras.length === 0 && (
               <p className="text-xs italic text-muted-foreground">Aún no hay siembras en seguimiento. Guarda un plan y créala desde aquí.</p>
             )}
-            {estado === 'listo' && siembras.length > 0 && (
+            {familiasDisponibles.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[10px] text-muted-foreground">Filtrar por familia:</span>
+                <button
+                  className={`rounded-full border px-2 py-0.5 text-[11px] ${filtro === '' ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}
+                  onClick={() => setFiltro('')}
+                >
+                  todas
+                </button>
+                {familiasDisponibles.map(f => (
+                  <button
+                    key={f}
+                    className={`rounded-full border px-2 py-0.5 text-[11px] ${filtro === f ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}
+                    onClick={() => setFiltro(filtro === f ? '' : f)}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
+            {estado === 'listo' && visibles.length > 0 && (
               <ul className="divide-y divide-border">
-                {siembras.map(s => (
+                {visibles.map(s => (
                   <li key={s.id} className="flex items-center justify-between gap-3 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{s.plan_nombre ?? s.plan_id}</p>
                       <p className="truncate text-[11px] text-muted-foreground tabular-nums">
-                        {s.cultivo_nombre} · sembrada {s.fecha_inicio} · BBCH {s.bbch_actual}
+                        {s.familia ? `${s.familia} · ` : ''}{s.especie ? `${s.especie} · ` : ''}{s.cultivo_nombre} · sembrada {s.fecha_inicio} · BBCH {s.bbch_actual}
                       </p>
                     </div>
                     <Button variant="secondary" size="sm" onClick={() => abrir(s.id)}>Ver</Button>
@@ -128,7 +170,7 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
               <div>
                 <p className="text-sm font-semibold">{detalle.plan_nombre}</p>
                 <p className="text-[11px] text-muted-foreground tabular-nums">
-                  Sembrada {seleccionada.fecha_inicio} · BBCH actual {detalle.siembra.bbch_actual}
+                  {[seleccionada.familia, seleccionada.especie, `Sembrada ${seleccionada.fecha_inicio}`, `BBCH actual ${detalle.siembra.bbch_actual}`].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <Button variant="ghost" size="sm" onClick={() => { setSeleccionada(null); setDetalle(null) }}>‹ Volver</Button>

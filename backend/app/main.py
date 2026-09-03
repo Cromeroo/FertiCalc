@@ -256,7 +256,19 @@ def plan_gnn(req: PlanPersonalizadoRequest):
 class CrearSiembraRequest(BaseModel):
     plan_id: str = Field(..., min_length=1)
     fecha_inicio: str = Field(..., min_length=8, max_length=10)
-    dias_estimados_fase: float = Field(..., gt=0, le=365)
+    dias_estimados_fase: Optional[float] = Field(None, gt=0, le=365)
+    familia: str = Field("", max_length=60)
+    especie: str = Field("", max_length=120)
+
+
+DIAS_POR_FAMILIA = {
+    "solanaceae": 16,
+    "poaceae": 20,
+    "rosaceae": 22,
+    "asteraceae": 12,
+    "cucurbitaceae": 15,
+}
+DIAS_DEFAULT = 18
 
 
 def _calendario(siembra: dict, plan: dict) -> list[dict]:
@@ -290,8 +302,11 @@ def crear_siembra(req: CrearSiembraRequest):
     plan = db.obtener_plan(req.plan_id)
     if not plan:
         raise HTTPException(404, "Plan no encontrado")
-    sid = db.crear_siembra(req.plan_id, req.fecha_inicio, req.dias_estimados_fase)
-    return {"id": sid}
+    cultivo = get_knowledge().cultivo(plan.get("cultivo_id") or "")
+    familia = (req.familia or "").strip().lower() or (cultivo or {}).get("familia", "")
+    dias = req.dias_estimados_fase or DIAS_POR_FAMILIA.get(familia, DIAS_DEFAULT)
+    sid = db.crear_siembra(req.plan_id, req.fecha_inicio, dias, familia, req.especie)
+    return {"id": sid, "dias_estimados_fase": dias, "familia": familia}
 
 
 @app.get("/api/siembras")

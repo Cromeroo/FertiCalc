@@ -118,9 +118,18 @@ HERRAMIENTAS = [
             {
                 "name": "listar_siembras",
                 "description": (
-                    "Lista las siembras en seguimiento (lote + plan + fecha de inicio + BBCH actual)."
+                    "Lista las siembras en seguimiento con familia, especie, lote, plan, "
+                    "fecha de inicio y BBCH actual. Acepta filtro opcional por familia botanica."
                 ),
-                "parameters": {"type": "OBJECT", "properties": {}},
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "familia": {
+                            "type": "STRING",
+                            "description": "Filtra por familia botanica (ej. solanaceae). Opcional.",
+                        },
+                    },
+                },
             },
             {
                 "name": "estado_siembra",
@@ -220,7 +229,7 @@ Reglas obligatorias:
 6. Responde en espanol, tono tecnico claro y conciso. Estructura: respuesta directa primero, detalle despues.
 7. Para preguntas conceptuales o de respaldo bibliografico usa buscar_literatura y cita el titulo del documento del fragmento. Si no hay resultados, dilo honestamente.
  8. Si ofreces una curva predicha con predecir_curva_gnn, dejara claro que es PREDICCION IA EXPERIMENTAL no validada experimentalmente.
- 9. Para preguntas de seguimiento de un lote ya sembrado usa listar_siembras, estado_siembra y ajustar_bbch. La siguiente aplicacion pendiente es la que toca hacer."""
+  9. Para preguntas de seguimiento de un lote ya sembrado usa listar_siembras, estado_siembra y ajustar_bbch. La siguiente aplicacion pendiente es la que toca hacer. Si el usuario menciona una familia o especie, filtra con el parametro familia de listar_siembras."""
 
 
 def _calendario_simple(siembra: dict, plan: dict) -> dict:
@@ -378,7 +387,11 @@ def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
     if nombre == "listar_siembras":
         from . import db as _db
 
-        return {"siembras": _db.listar_siembras()}
+        todas = _db.listar_siembras()
+        familia = (args.get("familia") or "").strip().lower()
+        if familia:
+            todas = [s for s in todas if (s.get("familia") or "") == familia]
+        return {"siembras": todas}
 
     if nombre == "estado_siembra":
         from . import db as _db

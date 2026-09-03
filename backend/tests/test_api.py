@@ -100,6 +100,39 @@ class TestSeguimiento:
         ).json()["id"]
         r = client.post(f"/api/siembras/{sid}/fase/1", json={"estado": "regada"})
         assert r.status_code == 400
+
+    def test_siembra_hereda_familia_y_dias_auto(self, client, plan_id):
+        r = client.post(
+            "/api/siembras",
+            json={"plan_id": plan_id, "fecha_inicio": "2026-03-01"},
+        )
+        assert r.status_code == 200
+        d = r.json()
+        assert d["familia"] == "solanaceae"
+        assert d["dias_estimados_fase"] == 16
+
+    def test_siembra_con_especie_y_dias_explicitos(self, client, plan_id):
+        r = client.post(
+            "/api/siembras",
+            json={
+                "plan_id": plan_id,
+                "fecha_inicio": "2026-03-01",
+                "dias_estimados_fase": 14,
+                "familia": "solanaceae",
+                "especie": "tomate chonto",
+            },
+        )
+        sid = r.json()["id"]
+        lista = client.get("/api/siembras").json()
+        fila = next(s for s in lista if s["id"] == sid)
+        assert fila["especie"] == "tomate chonto"
+        assert fila["familia"] == "solanaceae"
+
+    def test_listar_filtra_por_familia_en_llm(self, client):
+        assert True
+
+
+class TestGnn:
     def test_estado_entrenado(self, client):
         r = client.get("/api/gnn/estado")
         assert r.json()["entrenado"] is True

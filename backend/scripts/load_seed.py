@@ -54,6 +54,7 @@ def cargar(uri: str, user: str, password: str):
                 MERGE (cu:Cultivo {id:$id})
                 SET cu.nombre=$nombre,
                     cu.unidad_rendimiento=$unidad_rendimiento,
+                    cu.familia=$familia,
                     cu.extraccion_N=$ext_n,
                     cu.extraccion_P=$ext_p,
                     cu.extraccion_K=$ext_k,
@@ -64,6 +65,7 @@ def cargar(uri: str, user: str, password: str):
                 id=c["id"],
                 nombre=c["nombre"],
                 unidad_rendimiento=c["unidad_rendimiento"],
+                familia=c.get("familia", "desconocida"),
                 ext_n=c["extraccion_por_tonelada"]["N"],
                 ext_p=c["extraccion_por_tonelada"]["P"],
                 ext_k=c["extraccion_por_tonelada"]["K"],

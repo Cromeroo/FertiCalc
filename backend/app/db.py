@@ -53,6 +53,12 @@ def init_db():
             )
             """
         )
+        with _conn() as c2:
+            cols = {r[1] for r in c2.execute("PRAGMA table_info(siembras)").fetchall()}
+        if "familia" not in cols:
+            with _conn() as c3:
+                c3.execute("ALTER TABLE siembras ADD COLUMN familia TEXT DEFAULT ''")
+                c3.execute("ALTER TABLE siembras ADD COLUMN especie TEXT DEFAULT ''")
         c.execute(
             """
             CREATE TABLE IF NOT EXISTS aplicaciones (
@@ -127,16 +133,18 @@ def listar_feedback(limite: int = 200) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def crear_siembra(plan_id: str, fecha_inicio: str, dias_estimados_fase: float) -> str:
+def crear_siembra(plan_id: str, fecha_inicio: str, dias_estimados_fase: float, familia: str = "", especie: str = "") -> str:
     siembra_id = uuid.uuid4().hex[:12]
     with _conn() as c:
         c.execute(
-            "INSERT INTO siembras (id, plan_id, fecha_inicio, dias_estimados_fase, creada) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO siembras (id, plan_id, fecha_inicio, dias_estimados_fase, familia, especie, creada) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 siembra_id,
                 plan_id,
                 fecha_inicio,
                 dias_estimados_fase,
+                familia,
+                especie,
                 datetime.now(timezone.utc).isoformat(),
             ),
         )
@@ -163,7 +171,7 @@ def listar_siembras() -> list[dict]:
         rows = c.execute(
             """
             SELECT s.id, s.plan_id, s.fecha_inicio, s.dias_estimados_fase,
-                   s.bbch_actual, s.creada, p.nombre AS plan_nombre,
+                   s.bbch_actual, s.familia, s.especie, s.creada, p.nombre AS plan_nombre,
                    p.cultivo_nombre, p.rendimiento_t_ha
             FROM siembras s JOIN planes p ON p.id = s.plan_id
             ORDER BY s.creada DESC

@@ -272,18 +272,26 @@ export interface SiembraResumen {
   fecha_inicio: string
   dias_estimados_fase: number
   bbch_actual: string
+  familia?: string
+  especie?: string
   creada: string
 }
 
-export async function crearSiembra(planId: string, fechaInicio: string, diasFase: number): Promise<string> {
+export async function crearSiembra(
+  planId: string,
+  fechaInicio: string,
+  diasFase?: number,
+  familia = '',
+  especie = ''
+): Promise<{ id: string; dias_estimados_fase: number; familia: string }> {
   const r = await fetch('/api/siembras', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan_id: planId, fecha_inicio: fechaInicio, dias_estimados_fase: diasFase })
+    body: JSON.stringify({ plan_id: planId, fecha_inicio: fechaInicio, dias_estimados_fase: diasFase ?? null, familia, especie })
   })
   const data = await r.json()
   if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'No se pudo crear la siembra')
-  return data.id as string
+  return data as { id: string; dias_estimados_fase: number; familia: string }
 }
 
 export function listarSiembras(): Promise<SiembraResumen[]> {
