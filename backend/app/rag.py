@@ -92,7 +92,7 @@ class RagNeo4j:
                     """
                     CREATE (f:Fragmento {
                         titulo: $titulo, texto: $texto, embedding: $emb,
-                        fecha: datetime()
+                        fuente_tipo: 'documento', fecha: datetime()
                     })
                     """,
                     titulo=titulo,
@@ -123,6 +123,15 @@ class RagNeo4j:
         with self._session() as s:
             fila = s.run("MATCH (f:Fragmento) RETURN count(f) AS n").single()
         return fila["n"]
+
+    def eliminar_por_titulo(self, titulo: str) -> int:
+        with self._session() as s:
+            filas = s.run(
+                "MATCH (f:Fragmento {titulo: $titulo}) WITH f, count(f) AS c DETACH DELETE f RETURN sum(c) AS n",
+                titulo=titulo,
+            ).data()
+        n = (filas[0].get("n") if filas else 0) or 0
+        return int(n)
 
 
 class RagJson:
@@ -160,6 +169,12 @@ class RagJson:
 
     def total(self) -> int:
         return len(self._fragmentos)
+
+    def eliminar_por_titulo(self, titulo: str) -> int:
+        antes = len(self._fragmentos)
+        self._fragmentos = [f for f in self._fragmentos if f.get("titulo") != titulo]
+        self._ruta.write_text(json.dumps(self._fragmentos), encoding="utf-8")
+        return antes - len(self._fragmentos)
 
 
 def get_rag(driver_factory=None) -> object:

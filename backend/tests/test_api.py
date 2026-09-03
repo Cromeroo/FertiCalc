@@ -87,6 +87,33 @@ class TestGnn:
         assert client.get("/api/gnn/familia/zingiberales").status_code == 404
 
 
+class TestConocimiento:
+    def test_ingesta_reemplaza_sin_duplicar(self, client):
+        cuerpo = {"titulo": "Doc prueba idempotencia", "texto": "palabra " * 60}
+        r1 = client.post("/api/conocimiento/texto", json=cuerpo).json()
+        assert r1["fragmentos"] >= 1
+        r2 = client.post(
+            "/api/conocimiento/texto", json={**cuerpo, "reemplazar": True}
+        ).json()
+        assert r2["fragmentos"] == r1["fragmentos"]
+
+    def test_buscar_devuelve_fragmentos(self, client):
+        client.post(
+            "/api/conocimiento/texto",
+            json={"titulo": "Doc prueba busqueda", "texto": "fertilizacion nitrogenada fraccionada " * 30},
+        )
+        r = client.post(
+            "/api/conocimiento/buscar",
+            json={"consulta": "fertilizacion nitrogenada fraccionada en arroz", "k": 2},
+        )
+        assert r.status_code == 200
+        assert len(r.json()["resultados"]) >= 1
+
+    def test_estado_reporta_fragmentos(self, client):
+        r = client.get("/api/conocimiento/estado").json()
+        assert r["fragmentos"] >= 1
+
+
 class TestPlanesYFeedback:
     def test_crud_planes(self, client):
         rec = client.post(

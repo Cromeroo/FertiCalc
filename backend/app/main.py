@@ -156,6 +156,16 @@ def estado_conocimiento():
 class IngestaTexto(BaseModel):
     titulo: str = Field(..., min_length=1, max_length=200)
     texto: str = Field(..., min_length=50)
+    reemplazar: bool = False
+
+
+@app.post("/api/conocimiento/texto")
+def ingesta_texto(req: IngestaTexto):
+    rag = get_rag(get_driver)
+    if req.reemplazar:
+        rag.eliminar_por_titulo(req.titulo)
+    resultado = ingestar_documento(rag, req.titulo, texto=req.texto)
+    return resultado
 
 
 @app.post("/api/conocimiento/texto")
