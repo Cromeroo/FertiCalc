@@ -68,7 +68,7 @@ class TestGnn:
     def test_referencia_familia(self, client):
         r = client.get("/api/gnn/familia/poaceae")
         assert r.status_code == 200
-        assert r.json()["num_cultivos"] == 1
+        assert r.json()["num_cultivos"] == 2
 
     def test_plan_personalizado_advierte_ia(self, client):
         r = client.post(

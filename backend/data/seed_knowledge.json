@@ -52,6 +52,20 @@
       "anio": 1995,
       "titulo": "Mineral Nutrition of Higher Plants (2nd ed.)",
       "fuente": "Academic Press (interacciones y antagonismos ionicos)"
+    },
+    {
+      "id": "molina2012",
+      "autores": "Molina, E. y Rodriguez, A.",
+      "anio": 2012,
+      "titulo": "Fertilizacion con N, P, K y S, y curvas de absorcion de nutrimentos en arroz (Oryza sativa), var. CFX 18, en Guanacaste, Costa Rica",
+      "fuente": "Agronomia Costarricense 36(1): 39-51"
+    },
+    {
+      "id": "fedearroz2019",
+      "autores": "Tirado, Y. C. y Castilla, L. A.",
+      "anio": 2019,
+      "titulo": "Guia practica para la fertilizacion y nutricion del cultivo de arroz",
+      "fuente": "Fedearroz - Fondo Nacional del Arroz, Colombia"
     }
   ],
   "fuentes_fertilizante": [
@@ -690,6 +704,84 @@
             "K": 100
           },
           "referencia_curva": "bertsch2016"
+        }
+      ]
+    },
+    {
+      "id": "arroz",
+      "familia": "poaceae",
+      "nombre": "Arroz (Oryza sativa)",
+      "unidad_rendimiento": "t/ha grano seco",
+      "extraccion_por_tonelada": {
+        "N": 18.0,
+        "P": 8.0,
+        "K": 28.0
+      },
+      "preferencia_fuentes": [
+        "map",
+        "kcl",
+        "urea"
+      ],
+      "referencias_extraccion": [
+        "molina2012",
+        "fedearroz2019"
+      ],
+      "referencias_modelo": [
+        "stanford1973"
+      ],
+      "notas": "Extraccion por tonelada de grano calibrada con absorcion total de CFX 18 (Molina y Rodriguez 2012): N 61 kg/ha con rendimiento 3.9 t/ha (~15.6 N/t) mas restitucion de paja, y K total 197 kg/ha. Curva acumulada por fase derivada del texto: N 48% a 28 ddg y maximo a 79 ddg; P 42% a 43 ddg y maximo a 66 ddg; K 15% a 28 ddg, 40% adicional hasta 66 ddg y 45% tardio hasta 93 ddg.",
+      "fases": [
+        {
+          "orden": 1,
+          "nombre": "Establecimiento y macollamiento inicial",
+          "bbch_inicio": "00",
+          "bbch_fin": "25",
+          "descripcion": "Germinacion a inicio de macollamiento activo (~28 ddg). Absorcion N temprana por ciclo corto (48% del N, Molina y Rodriguez 2012)",
+          "curva_pct_acumulada": {
+            "N": 48,
+            "P": 20,
+            "K": 15
+          },
+          "referencia_curva": "molina2012"
+        },
+        {
+          "orden": 2,
+          "nombre": "Macollamiento activo a primordio floral",
+          "bbch_inicio": "26",
+          "bbch_fin": "49",
+          "descripcion": "Macollamiento pleno hasta inicio de primordio (~43 ddg). P vegetativo 42% acumulado (molina2012); fracciones N 25-35 y 45-55 ddg (Cordero 1993)",
+          "curva_pct_acumulada": {
+            "N": 68,
+            "P": 42,
+            "K": 35
+          },
+          "referencia_curva": "molina2012"
+        },
+        {
+          "orden": 3,
+          "nombre": "Reproduccion: primordio a floracion",
+          "bbch_inicio": "50",
+          "bbch_fin": "69",
+          "descripcion": "Embuchamiento a floracion (~66 ddg): pico de absorcion de P (58% entre primordio y floracion) y K (+40% hasta floracion); N coincide con llenado en grano lechoso",
+          "curva_pct_acumulada": {
+            "N": 85,
+            "P": 80,
+            "K": 55
+          },
+          "referencia_curva": "molina2012"
+        },
+        {
+          "orden": 4,
+          "nombre": "Llenado de grano y madurez",
+          "bbch_inicio": "70",
+          "bbch_fin": "99",
+          "descripcion": "Llenado (grano lechoso ~79 ddg) a madurez (~93 ddg). Absorcion tardia muy alta de K (45% del total en maduracion) y maximo de N a 79 ddg",
+          "curva_pct_acumulada": {
+            "N": 100,
+            "P": 100,
+            "K": 100
+          },
+          "referencia_curva": "molina2012"
         }
       ]
     }
