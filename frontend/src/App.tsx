@@ -9,6 +9,7 @@ import { Resultados } from '@/components/Resultados'
 import { PlanesGuardados } from '@/components/PlanesGuardados'
 import { Chat } from '@/components/Chat'
 import { LaboratorioGnn } from '@/components/LaboratorioGnn'
+import { Seguimiento } from '@/components/Seguimiento'
 import type { Fase, PlanResumen, Recomendacion } from '@/lib/api'
 
 const VALORES_INICIALES: ValoresFormulario = {
@@ -160,6 +161,8 @@ export default function App() {
             <Chat />
 
             <LaboratorioGnn />
+
+            <Seguimiento planes={planes.map(p => ({ id: p.id, nombre: p.nombre }))} />
 
             <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
           </>

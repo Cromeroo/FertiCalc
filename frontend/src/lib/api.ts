@@ -239,6 +239,70 @@ export async function referenciaFamilia(familia: string): Promise<ReferenciaFami
   return pedir(`/api/gnn/familia/${familia}`)
 }
 
+export interface FaseCalendario {
+  orden: number
+  nombre_fase: string
+  bbch: string
+  fecha_estimada: string
+  dosis_nutriente_kg_ha: Record<string, number>
+  fuentes_sugeridas: FuenteAplicacion[]
+  estado: string
+  aplicada: string
+}
+
+export interface EstadoSiembra {
+  siembra: {
+    id: string
+    plan_id: string
+    fecha_inicio: string
+    dias_estimados_fase: number
+    bbch_actual: string
+    creada: string
+  }
+  plan_nombre: string
+  calendario: FaseCalendario[]
+}
+
+export interface SiembraResumen {
+  id: string
+  plan_id: string
+  plan_nombre: string
+  cultivo_nombre?: string | null
+  rendimiento_t_ha: number
+  fecha_inicio: string
+  dias_estimados_fase: number
+  bbch_actual: string
+  creada: string
+}
+
+export async function crearSiembra(planId: string, fechaInicio: string, diasFase: number): Promise<string> {
+  const r = await fetch('/api/siembras', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan_id: planId, fecha_inicio: fechaInicio, dias_estimados_fase: diasFase })
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'No se pudo crear la siembra')
+  return data.id as string
+}
+
+export function listarSiembras(): Promise<SiembraResumen[]> {
+  return pedir<SiembraResumen[]>('/api/siembras')
+}
+
+export function estadoSiembra(id: string): Promise<EstadoSiembra> {
+  return pedir(`/api/siembras/${id}`)
+}
+
+export async function marcarFase(siembraId: string, orden: number, estado: 'aplicada' | 'omitida' | 'pendiente'): Promise<void> {
+  const r = await fetch(`/api/siembras/${siembraId}/fase/${orden}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado })
+  })
+  if (!r.ok) throw new Error('No se pudo actualizar la fase')
+}
+
 export interface EstadoGnn {
   entrenado: boolean
   arquitectura?: string

@@ -50,7 +50,56 @@ class TestRecomendacion:
         assert r.status_code == 400
 
 
-class TestGnn:
+class TestSeguimiento:
+    @pytest.fixture
+    def plan_id(self, client):
+        rec = client.post(
+            "/api/recomendacion",
+            json={"cultivo_id": "tomate", "rendimiento_t_ha": 60},
+        ).json()
+        pid = client.post(
+            "/api/planes", json={"nombre": "plan-seg", "recomendacion": rec}
+        ).json()["id"]
+        return pid
+
+    def test_ciclo_completo_siembra(self, client, plan_id):
+        r = client.post(
+            "/api/siembras",
+            json={"plan_id": plan_id, "fecha_inicio": "2026-03-01", "dias_estimados_fase": 20},
+        )
+        assert r.status_code == 200
+        sid = r.json()["id"]
+
+        estado = client.get(f"/api/siembras/{sid}").json()
+        cal = estado["calendario"]
+        assert len(cal) == 4
+        assert cal[0]["fecha_estimada"] == "2026-03-01"
+        assert cal[1]["fecha_estimada"] == "2026-03-21"
+        assert cal[3]["fecha_estimada"] == "2026-04-30"
+        assert all(f["estado"] == "pendiente" for f in cal)
+
+        ok = client.post(f"/api/siembras/{sid}/fase/1", json={"estado": "aplicada"})
+        assert ok.status_code == 200
+        estado2 = client.get(f"/api/siembras/{sid}").json()
+        assert estado2["calendario"][0]["estado"] == "aplicada"
+
+        bb = client.post(f"/api/siembras/{sid}/bbch", json={"bbch_actual": "51"})
+        assert bb.json()["bbch_actual"] == "51"
+
+    def test_siembra_plan_inexistente_404(self, client):
+        r = client.post(
+            "/api/siembras",
+            json={"plan_id": "no-existe", "fecha_inicio": "2026-03-01", "dias_estimados_fase": 20},
+        )
+        assert r.status_code == 404
+
+    def test_fase_estado_invalido_400(self, client, plan_id):
+        sid = client.post(
+            "/api/siembras",
+            json={"plan_id": plan_id, "fecha_inicio": "2026-03-01", "dias_estimados_fase": 20},
+        ).json()["id"]
+        r = client.post(f"/api/siembras/{sid}/fase/1", json={"estado": "regada"})
+        assert r.status_code == 400
     def test_estado_entrenado(self, client):
         r = client.get("/api/gnn/estado")
         assert r.json()["entrenado"] is True

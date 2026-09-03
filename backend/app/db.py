@@ -40,6 +40,31 @@ def init_db():
             )
             """
         )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS siembras (
+                id TEXT PRIMARY KEY,
+                plan_id TEXT NOT NULL,
+                fecha_inicio TEXT NOT NULL,
+                dias_estimados_fase REAL NOT NULL,
+                bbch_actual TEXT DEFAULT '00',
+                creada TEXT NOT NULL,
+                FOREIGN KEY (plan_id) REFERENCES planes(id) ON DELETE CASCADE
+            )
+            """
+        )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS aplicaciones (
+                siembra_id TEXT NOT NULL,
+                orden_fase INTEGER NOT NULL,
+                estado TEXT DEFAULT 'pendiente',
+                aplicada TEXT DEFAULT '',
+                PRIMARY KEY (siembra_id, orden_fase),
+                FOREIGN KEY (siembra_id) REFERENCES siembras(id) ON DELETE CASCADE
+            )
+            """
+        )
 
 
 def guardar_plan(nombre: str, cultivo_id: str, cultivo_nombre: str, rendimiento: float, recomendacion: dict) -> str:
@@ -100,6 +125,79 @@ def listar_feedback(limite: int = 200) -> list[dict]:
             (limite,),
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def crear_siembra(plan_id: str, fecha_inicio: str, dias_estimados_fase: float) -> str:
+    siembra_id = uuid.uuid4().hex[:12]
+    with _conn() as c:
+        c.execute(
+            "INSERT INTO siembras (id, plan_id, fecha_inicio, dias_estimados_fase, creada) VALUES (?, ?, ?, ?, ?)",
+            (
+                siembra_id,
+                plan_id,
+                fecha_inicio,
+                dias_estimados_fase,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+    return siembra_id
+
+
+def obtener_siembra(siembra_id: str) -> dict | None:
+    with _conn() as c:
+        row = c.execute("SELECT * FROM siembras WHERE id = ?", (siembra_id,)).fetchone()
+    if not row:
+        return None
+    siembra = dict(row)
+    with _conn() as c:
+        filas = c.execute(
+            "SELECT orden_fase, estado, aplicada FROM aplicaciones WHERE siembra_id = ? ORDER BY orden_fase",
+            (siembra_id,),
+        ).fetchall()
+    siembra["aplicaciones"] = [dict(f) for f in filas]
+    return siembra
+
+
+def listar_siembras() -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT s.id, s.plan_id, s.fecha_inicio, s.dias_estimados_fase,
+                   s.bbch_actual, s.creada, p.nombre AS plan_nombre,
+                   p.cultivo_nombre, p.rendimiento_t_ha
+            FROM siembras s JOIN planes p ON p.id = s.plan_id
+            ORDER BY s.creada DESC
+            """
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def actualizar_bbch(siembra_id: str, bbch_actual: str) -> bool:
+    with _conn() as c:
+        cur = c.execute(
+            "UPDATE siembras SET bbch_actual = ? WHERE id = ?",
+            (bbch_actual, siembra_id),
+        )
+    return cur.rowcount > 0
+
+
+def marcar_aplicacion(siembra_id: str, orden_fase: int, estado: str) -> bool:
+    with _conn() as c:
+        cur = c.execute(
+            """
+            INSERT INTO aplicaciones (siembra_id, orden_fase, estado, aplicada)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT (siembra_id, orden_fase)
+            DO UPDATE SET estado = excluded.estado, aplicada = excluded.aplicada
+            """,
+            (
+                siembra_id,
+                orden_fase,
+                estado,
+                datetime.now(timezone.utc).isoformat() if estado == "aplicada" else "",
+            ),
+        )
+    return cur.rowcount > 0
 
 
 init_db()
