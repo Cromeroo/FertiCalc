@@ -1,5 +1,6 @@
 import { Field, Label } from '@/components/ui/label'
-import { Input, Select } from '@/components/ui/input'
+import { Select } from '@/components/ui/input'
+import { DecimalInput } from '@/components/ui/decimal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { NUTRIENTES, NOMBRE_NUTRIENTE, type Nutriente } from '@/lib/utils'
@@ -30,9 +31,12 @@ export function FormularioLote({ cultivos, cultivoId, onCultivo, fases, valores,
     <Card>
       <CardHeader>
         <CardTitle>Parámetros del lote</CardTitle>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Solo necesitas el cultivo y el rendimiento esperado. Lo demás trae valores razonables por defecto.
+        </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={onCalcular} noValidate={false}>
+        <form onSubmit={onCalcular} noValidate>
           <Field label="Cultivo" htmlFor="cultivo">
             <Select id="cultivo" value={cultivoId} onChange={e => onCultivo(e.target.value)}>
               {cultivos.map(c => (
@@ -41,62 +45,65 @@ export function FormularioLote({ cultivos, cultivoId, onCultivo, fases, valores,
             </Select>
           </Field>
 
-          <Field label="Rendimiento esperado (t/ha)" htmlFor="rendimiento">
-            <Input
+          <Field label="Rendimiento esperado (t/ha)" htmlFor="rendimiento" hint="¿Cuántas toneladas por hectárea esperas cosechar? Un valor aproximado está bien.">
+            <DecimalInput
               id="rendimiento"
-              type="number"
-              min="0.1"
-              step="0.1"
-              required
+              min={0.1}
               value={valores.rendimiento}
-              onChange={e => onChange({ ...valores, rendimiento: e.target.value })}
+              ariaLabel="Rendimiento esperado en toneladas por hectárea"
+              onChange={v => onChange({ ...valores, rendimiento: v })}
+              required
             />
           </Field>
 
-          <fieldset className="mb-3 rounded-md border border-border px-3 pb-3 pt-1">
-            <legend className="px-1 text-[11px] text-muted-foreground">
-              Aporte estimado del suelo (kg/ha disponibles)
-            </legend>
-            <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+          <details className="mb-3 rounded-md border border-border px-3 py-2">
+            <summary className="cursor-pointer select-none text-xs font-medium text-primary marker:content-none">
+              ¿Tienes análisis de suelo? (opcional)
+            </summary>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Si no tienes análisis, déjalo en 0: el plan asume que el suelo no aporta nutrientes.
+              Se consigue en un laboratorio agropecuario con una muestra de tu lote.
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-2 max-sm:grid-cols-1">
               {NUTRIENTES.map(n => (
                 <div key={n}>
-                  <Label htmlFor={`suelo-${n}`} className="sr-only">{`Aporte ${NOMBRE_NUTRIENTE[n]}`}</Label>
-                  <Input
+                  <Label htmlFor={`suelo-${n}`}>{ETIQUETA_CORTA[n]} disponible (kg/ha)</Label>
+                  <DecimalInput
                     id={`suelo-${n}`}
-                    type="number"
-                    min="0"
-                    placeholder={`${ETIQUETA_CORTA[n]} disponible`}
-                    aria-label={`Aporte de suelo ${NOMBRE_NUTRIENTE[n]}`}
+                    min={0}
                     value={valores.suelo[n.toLowerCase() as 'n' | 'p' | 'k']}
-                    onChange={e => onChange({ ...valores, suelo: { ...valores.suelo, [n.toLowerCase()]: e.target.value } })}
+                    ariaLabel={`Aporte de suelo ${NOMBRE_NUTRIENTE[n]}`}
+                    onChange={v => onChange({ ...valores, suelo: { ...valores.suelo, [n.toLowerCase()]: v } })}
                   />
                 </div>
               ))}
             </div>
-          </fieldset>
+          </details>
 
-          <fieldset className="mb-3 rounded-md border border-border px-3 pb-3 pt-1">
-            <legend className="px-1 text-[11px] text-muted-foreground">
-              Eficiencia de aprovechamiento (ERF)
-            </legend>
-            <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
+          <details className="mb-3 rounded-md border border-border px-3 py-2">
+            <summary className="cursor-pointer select-none text-xs font-medium text-primary marker:content-none">
+              Eficiencias avanzadas ERF (opcional)
+            </summary>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Qué fracción del fertilizante aprovecha realmente la planta (0 a 1).
+              Los valores por defecto (N 0.6 · P 0.25 · K 0.5) sirven para la mayoría de los casos.
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-2 max-sm:grid-cols-1">
               {NUTRIENTES.map(n => (
                 <div key={n}>
-                  <Label htmlFor={`erf-${n}`} className="sr-only">{`ERF ${NOMBRE_NUTRIENTE[n]}`}</Label>
-                  <Input
+                  <Label htmlFor={`erf-${n}`}>ERF {n}</Label>
+                  <DecimalInput
                     id={`erf-${n}`}
-                    type="number"
-                    min="0.05"
-                    max="1"
-                    step="0.05"
-                    aria-label={`Eficiencia ERF ${NOMBRE_NUTRIENTE[n]}`}
+                    min={0.05}
+                    max={1}
                     value={valores.eficiencias[n]}
-                    onChange={e => onChange({ ...valores, eficiencias: { ...valores.eficiencias, [n]: e.target.value } })}
+                    ariaLabel={`Eficiencia ERF ${NOMBRE_NUTRIENTE[n]}`}
+                    onChange={v => onChange({ ...valores, eficiencias: { ...valores.eficiencias, [n]: v } })}
                   />
                 </div>
               ))}
             </div>
-          </fieldset>
+          </details>
 
           {fases.length > 0 && (
             <Field label="Calcular desde la fase (opcional, ciclos en curso)" htmlFor="fase-desde">

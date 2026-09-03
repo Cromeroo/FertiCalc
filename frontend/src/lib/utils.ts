@@ -25,3 +25,12 @@ export function fmtFecha(iso: string): string {
     return iso
   }
 }
+
+export function parseDecimal(raw: string): number | null {
+  if (typeof raw !== 'string') return null
+  const t = raw.trim().replace(/\s+/g, '').replace(',', '.')
+  if (t === '' || t === '.' || t === '-' || t === '-.') return null
+  if (!/^-?\d*\.?\d+$/.test(t)) return null
+  const n = Number(t)
+  return Number.isFinite(n) ? n : null
+}

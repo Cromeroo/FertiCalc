@@ -4,6 +4,7 @@ import type { SolicitudRecomendacion } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { NUTRIENTES, parseDecimal } from '@/lib/utils'
 import { FormularioLote, type ValoresFormulario } from '@/components/FormularioLote'
 import { Resultados } from '@/components/Resultados'
 import { PlanesGuardados } from '@/components/PlanesGuardados'
@@ -55,25 +56,49 @@ export default function App() {
   }
 
   function construirSolicitud(): SolicitudRecomendacion {
+    const suelo = (v: string) => (v.trim() === '' ? 0 : (parseDecimal(v) ?? 0))
     return {
       cultivo_id: cultivoId,
-      rendimiento_t_ha: Number(valores.rendimiento),
+      rendimiento_t_ha: parseDecimal(valores.rendimiento) ?? 0,
       analisis_suelo: {
-        n_disponible_kg_ha: Number(valores.suelo.n),
-        p2o5_disponible_kg_ha: Number(valores.suelo.p),
-        k2o_disponible_kg_ha: Number(valores.suelo.k)
+        n_disponible_kg_ha: suelo(valores.suelo.n),
+        p2o5_disponible_kg_ha: suelo(valores.suelo.p),
+        k2o_disponible_kg_ha: suelo(valores.suelo.k)
       },
       eficiencias: {
-        N: Number(valores.eficiencias.N),
-        P: Number(valores.eficiencias.P),
-        K: Number(valores.eficiencias.K)
+        N: parseDecimal(valores.eficiencias.N) ?? 0.6,
+        P: parseDecimal(valores.eficiencias.P) ?? 0.25,
+        K: parseDecimal(valores.eficiencias.K) ?? 0.5
       },
       fase_desde_orden: valores.faseDesde ? Number(valores.faseDesde) : null
     }
   }
 
+  function validarValores(): string | null {
+    const rend = parseDecimal(valores.rendimiento)
+    if (rend === null || rend <= 0) return 'El rendimiento esperado debe ser un número mayor a 0 (acepta coma o punto).'
+    for (const k of ['n', 'p', 'k'] as const) {
+      const v = valores.suelo[k].trim()
+      if (v !== '') {
+        const s = parseDecimal(v)
+        if (s === null || s < 0) return 'Los aportes del suelo deben ser números mayores o iguales a 0, o déjalos vacíos.'
+      }
+    }
+    for (const n of NUTRIENTES) {
+      const e = parseDecimal(valores.eficiencias[n])
+      if (e === null || e <= 0 || e > 1) return 'Las eficiencias ERF deben ser números entre 0.05 y 1.'
+    }
+    return null
+  }
+
   async function calcular(e: React.FormEvent) {
     e.preventDefault()
+    const problema = validarValores()
+    if (problema) {
+      setResultado(null)
+      setErrorGlobal(problema)
+      return
+    }
     setCalculando(true)
     setErrorGlobal('')
     try {

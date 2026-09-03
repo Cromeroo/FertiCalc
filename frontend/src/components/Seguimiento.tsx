@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input, Select } from '@/components/ui/input'
+import { DecimalInput } from '@/components/ui/decimal'
 import { Label } from '@/components/ui/label'
+import { parseDecimal } from '@/lib/utils'
 import { fmtNum } from '@/lib/utils'
 import type { EstadoSiembra, FaseCalendario, SiembraResumen } from '@/lib/api'
 
@@ -40,9 +42,11 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
 
   async function abrir(id: string) {
     try {
-      const d = await api.estadoSiembra(id)
+      const [d, lista] = await Promise.all([api.estadoSiembra(id), api.listarSiembras()])
+      setSiembras(lista)
+      setEstado('listo')
       setDetalle(d)
-      setSeleccionada(siembras.find(x => x.id === id) ?? null)
+      setSeleccionada(lista.find(x => x.id === id) ?? null)
       setVista({ nombre: 'calendario' })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo abrir la siembra')
@@ -54,12 +58,16 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
     setError('')
     setGuardando(true)
     try {
+      const diasNum = dias.trim() === '' ? undefined : parseDecimal(dias)
+      if (diasNum !== undefined && (diasNum === null || diasNum < 1)) {
+        setError('Los días por fase deben ser un número mayor o igual a 1, o déjalo vacío para cálculo automático.')
+        return
+      }
       const res = await api.crearSiembra(
-        planId, fecha, dias ? Number(dias) : undefined, familia.trim().toLowerCase(), especie.trim()
+        planId, fecha, diasNum ?? undefined, familia.trim().toLowerCase(), especie.trim()
       )
       setDias(String(res.dias_estimados_fase))
       await abrir(res.id)
-      recargar()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear la siembra')
     } finally {
@@ -156,8 +164,9 @@ export function Seguimiento({ planes }: { planes: { id: string; nombre: string }
               </div>
               <div>
                 <Label htmlFor="seg-dias">Días por fase <span className="font-normal text-muted-foreground">(auto según familia)</span></Label>
-                <Input id="seg-dias" type="number" min="1" max="365" placeholder="automático" value={dias} onChange={e => setDias(e.target.value)} />
-              </div>
+                <DecimalInput id="seg-dias" min={1} max={365} placeholder="automático"
+                  ariaLabel="Días estimados por fase, opcional"
+                  value={dias} onChange={setDias} />              </div>
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={!planId || guardando}>

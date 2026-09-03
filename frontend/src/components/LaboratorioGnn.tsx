@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input, Select } from '@/components/ui/input'
+import { DecimalInput } from '@/components/ui/decimal'
 import { Label } from '@/components/ui/label'
+import { parseDecimal } from '@/lib/utils'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/card'
 import { Resultados } from './Resultados'
 import type { PlanGnnRespuesta, RespuestaGnn } from '@/lib/api'
@@ -51,10 +53,14 @@ export function LaboratorioGnn() {
 
   async function predecir(e: React.FormEvent) {
     e.preventDefault()
-    const n = Number(ext.N), p = Number(ext.P), k = Number(ext.K)
-    const rend = Number(rendimiento)
-    if (![n, p, k, rend].every(v => Number.isFinite(v) && v > 0)) {
-      setError('Revisa los valores: extracción N/P/K y rendimiento deben ser números mayores a 0.')
+    const n = parseDecimal(ext.N), p = parseDecimal(ext.P), k = parseDecimal(ext.K)
+    const rend = parseDecimal(rendimiento)
+    if (n === null || n <= 0 || p === null || p <= 0 || k === null || k <= 0) {
+      setError('Revisa la extracción N/P/K: deben ser números mayores a 0 (acepta coma o punto).')
+      return
+    }
+    if (rend === null || rend <= 0) {
+      setError('El rendimiento esperado debe ser un número mayor a 0.')
       return
     }
     setCargando(true)
@@ -62,8 +68,8 @@ export function LaboratorioGnn() {
     try {
       setResultado(
         await api.generarPlanGnn({
-          extraccion_por_t: { N: Number(ext.N), P: Number(ext.P), K: Number(ext.K) },
-          rendimiento_t_ha: Number(rendimiento),
+          extraccion_por_t: { N: n, P: p, K: k },
+          rendimiento_t_ha: rend,
           num_fases: fases,
           familia
         })
@@ -98,7 +104,7 @@ export function LaboratorioGnn() {
           </ol>
         </div>
 
-        <form onSubmit={predecir} className="space-y-3">
+        <form onSubmit={predecir} className="space-y-3" noValidate>
           <div className="flex flex-wrap gap-2">
             <div className="flex-1 min-w-[180px]">
               <Label htmlFor="gnn-nombre">1. Nombre de tu cultivo (opcional)</Label>
@@ -119,21 +125,18 @@ export function LaboratorioGnn() {
             <p className="mb-1.5 text-[10px] text-muted-foreground">No es fertilizante. Es cuánto la planta extrae por tonelada cosechada. El laboratorio calculará el fertilizante por ti.</p>
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-28">
-                <Input id="gnn-n" type="number" min="0.01" step="0.01" inputMode="decimal" value={ext.N}
-                  aria-label="Extracción de nitrógeno kg/t"
-                  onChange={e => { setExt({ ...ext, N: e.target.value }); setEditadoManual(true) }} required />
+                <DecimalInput id="gnn-n" min={0.01} value={ext.N} ariaLabel="Extracción de nitrógeno kg/t"
+                  onChange={v => { setExt({ ...ext, N: v }); setEditadoManual(true) }} required />
                 <p className="mt-1 text-[10px] text-muted-foreground">N extraído (kg/t)</p>
               </div>
               <div className="w-28">
-                <Input id="gnn-p" type="number" min="0.01" step="0.01" inputMode="decimal" value={ext.P}
-                  aria-label="Extracción de fósforo kg/t"
-                  onChange={e => { setExt({ ...ext, P: e.target.value }); setEditadoManual(true) }} required />
+                <DecimalInput id="gnn-p" min={0.01} value={ext.P} ariaLabel="Extracción de fósforo kg/t"
+                  onChange={v => { setExt({ ...ext, P: v }); setEditadoManual(true) }} required />
                 <p className="mt-1 text-[10px] text-muted-foreground">P₂O₅ extraído (kg/t)</p>
               </div>
               <div className="w-28">
-                <Input id="gnn-k" type="number" min="0.01" step="0.01" inputMode="decimal" value={ext.K}
-                  aria-label="Extracción de potasio kg/t"
-                  onChange={e => { setExt({ ...ext, K: e.target.value }); setEditadoManual(true) }} required />
+                <DecimalInput id="gnn-k" min={0.01} value={ext.K} ariaLabel="Extracción de potasio kg/t"
+                  onChange={v => { setExt({ ...ext, K: v }); setEditadoManual(true) }} required />
                 <p className="mt-1 text-[10px] text-muted-foreground">K₂O extraído (kg/t)</p>
               </div>
             </div>
@@ -143,8 +146,9 @@ export function LaboratorioGnn() {
           <div className="flex flex-wrap items-end gap-2">
             <div className="w-32">
               <Label htmlFor="gnn-rend">3. Rendimiento esperado (t/ha)</Label>
-              <Input id="gnn-rend" type="number" min="0.1" step="1" value={rendimiento}
-                onChange={e => setRendimiento(e.target.value)} required />
+              <DecimalInput id="gnn-rend" min={0.1} value={rendimiento}
+                ariaLabel="Rendimiento esperado en toneladas por hectárea"
+                onChange={setRendimiento} required />
             </div>
             <div className="w-28">
               <Label htmlFor="gnn-fases">Fases del ciclo</Label>
