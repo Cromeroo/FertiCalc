@@ -25,13 +25,16 @@ export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuarda
     setGuardando(true)
     try {
       await api.guardarPlan(nombre, data)
-      setMensaje(`Guardado como "${nombre}"`)
+      setMensaje(`Guardado como "${nombre}" — encuéntralo en Seguimiento ↓`)
       onGuardado?.()
+      window.setTimeout(() => {
+        document.getElementById('seguimiento')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 600)
     } catch (e) {
       setMensaje(e instanceof Error ? e.message : 'Error al guardar')
     } finally {
       setGuardando(false)
-      window.setTimeout(() => setMensaje(''), 4000)
+      window.setTimeout(() => setMensaje(''), 5000)
     }
   }
 
@@ -72,11 +75,21 @@ export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuarda
           </div>
 
           {data.advertencias.length > 0 && (
-            <Alert variant="warning" title={`Avisos del motor (${data.advertencias.length})`}>
+            <Alert variant="warning" title={`Alertas nutricionales (${data.advertencias.length}) — revisa antes de aplicar`}>
               <ul className="list-disc pl-4 space-y-1">
-                {data.advertencias.map((a, i) => (
-                  <li key={i}>{a}</li>
-                ))}
+                {data.advertencias.map((a, i) => {
+                  const m = a.match(/^\[([^\]]+)\]\s*(.*)$/)
+                  return (
+                    <li key={i}>
+                      {m ? (
+                        <>
+                          <Badge variant="outline" className="mr-1.5">{m[1]}</Badge>
+                          {m[2]}
+                        </>
+                      ) : a}
+                    </li>
+                  )
+                })}
               </ul>
             </Alert>
           )}

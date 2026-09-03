@@ -115,7 +115,7 @@ def cargar(uri: str, user: str, password: str):
                 MERGE (r:ReglaAntagonismo {id:$id})
                 SET r.tipo=$tipo, r.base=$base, r.nutriente_ref=$nutriente_ref,
                     r.factor=$factor, r.umbral=$umbral, r.mensaje=$mensaje,
-                    r.referencia=$referencia
+                    r.referencia=$referencia, r.familias=$familias_json
                 """,
                 id=rg["id"],
                 tipo=rg["tipo"],
@@ -125,6 +125,7 @@ def cargar(uri: str, user: str, password: str):
                 umbral=rg.get("umbral"),
                 mensaje=rg["mensaje"],
                 referencia=rg["referencia"],
+                familias_json=json.dumps(rg.get("familias", {}), ensure_ascii=False),
             )
             s.run(
                 "MATCH (r:ReglaAntagonismo {id:$rid}), (ref:Referencia {id:$refid}) MERGE (r)-[:DOCUMENTADO_POR]->(ref)",

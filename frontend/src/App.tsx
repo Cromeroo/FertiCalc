@@ -9,6 +9,7 @@ import { Resultados } from '@/components/Resultados'
 import { PlanesGuardados } from '@/components/PlanesGuardados'
 import { Chat } from '@/components/Chat'
 import { LaboratorioGnn } from '@/components/LaboratorioGnn'
+import { Seguimiento } from '@/components/Seguimiento'
 import type { Fase, PlanResumen, Recomendacion } from '@/lib/api'
 
 const VALORES_INICIALES: ValoresFormulario = {
@@ -126,8 +127,15 @@ export default function App() {
           </Badge>
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Recomendación de fertilización por fase fenológica · motor determinista con evidencia trazable
+          Planifica por cultivo · Sigue tu siembra por fase · Resuelve dudas con el asistente
         </p>
+        <nav aria-label="Secciones" className="mt-3 flex flex-wrap gap-1.5 text-xs">
+          <a href="#planificar" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-primary">1 · Planificar</a>
+          <span className="self-center text-muted-foreground">→</span>
+          <a href="#seguimiento" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-primary">2 · Seguimiento</a>
+          <span className="self-center text-muted-foreground">→</span>
+          <a href="#asistente" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-primary">3 · Asistente</a>
+        </nav>
       </header>
 
       {errorGlobal && (
@@ -144,24 +152,51 @@ export default function App() {
           </>
         ) : (
           <>
-            <FormularioLote
-              cultivos={cultivos}
-              cultivoId={cultivoId}
-              onCultivo={seleccionarCultivo}
-              fases={fases}
-              valores={valores}
-              onChange={setValores}
-              onCalcular={calcular}
-              cargando={calculando}
-            />
+            <section id="planificar" className="scroll-mt-4 space-y-4">
+              <h2 className="text-sm font-semibold">
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">1</span>
+                Planifica tu fertilización
+              </h2>
+              <FormularioLote
+                cultivos={cultivos}
+                cultivoId={cultivoId}
+                onCultivo={seleccionarCultivo}
+                fases={fases}
+                valores={valores}
+                onChange={setValores}
+                onCalcular={calcular}
+                cargando={calculando}
+              />
 
-            {resultado && <Resultados data={resultado} onGuardado={recargarPlanes} />}
+              {resultado && <Resultados data={resultado} onGuardado={recargarPlanes} />}
 
-            <Chat />
+              <details className="rounded-xl border border-border bg-card px-4 py-3">
+                <summary className="cursor-pointer select-none text-sm font-medium text-primary marker:content-none">
+                  ¿Tu cultivo no está en el catálogo? Estímalo con IA
+                </summary>
+                <div className="pt-3">
+                  <LaboratorioGnn />
+                </div>
+              </details>
+            </section>
 
-            <LaboratorioGnn />
+            <section id="seguimiento" className="scroll-mt-4 space-y-4">
+              <h2 className="text-sm font-semibold">
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">2</span>
+                Sigue tu siembra fase a fase
+              </h2>
+              <Seguimiento planes={planes.map(p => ({ id: p.id, nombre: p.nombre }))} />
 
-            <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
+              <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
+            </section>
+
+            <section id="asistente" className="scroll-mt-4 space-y-4">
+              <h2 className="text-sm font-semibold">
+                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">3</span>
+                Resuelve dudas con el asistente
+              </h2>
+              <Chat />
+            </section>
           </>
         )}
       </main>

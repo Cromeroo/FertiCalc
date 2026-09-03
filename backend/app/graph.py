@@ -89,6 +89,7 @@ class Neo4jKnowledge:
             MATCH (c:Cultivo {id: $id})
             RETURN c.id AS id, c.nombre AS nombre,
                    c.unidad_rendimiento AS unidad_rendimiento,
+                   c.familia AS familia,
                    c.extraccion_N AS eN, c.extraccion_P AS eP, c.extraccion_K AS eK,
                    c.preferencia_fuentes AS preferencia_fuentes,
                    c.referencias_extraccion AS referencias_extraccion,
@@ -99,6 +100,7 @@ class Neo4jKnowledge:
         if not rows:
             return None
         row = rows[0]
+        row["familia"] = (row.pop("familia") or "desconocida").strip().lower() or "desconocida"
         row["extraccion_por_tonelada"] = {
             "N": float(row.pop("eN")),
             "P": float(row.pop("eP")),
@@ -170,13 +172,17 @@ class Neo4jKnowledge:
             RETURN rg.id AS id, rg.tipo AS tipo, rg.base AS base,
                    rg.nutriente_ref AS nutriente_ref, rg.factor AS factor,
                    rg.umbral AS umbral, rg.mensaje AS mensaje,
-                   rg.referencia AS referencia
+                   rg.referencia AS referencia, rg.familias AS familias_json
             ORDER BY rg.id
             """
         )
         for r in rows:
             r["factor"] = float(r["factor"]) if r["factor"] is not None else None
             r["umbral"] = float(r["umbral"]) if r["umbral"] is not None else None
+            try:
+                r["familias"] = json.loads(r.pop("familias_json") or "{}")
+            except (TypeError, json.JSONDecodeError):
+                r["familias"] = {}
         return rows
 
     def cadena_completa(self, cultivo_id: str) -> Optional[dict]:

@@ -76,7 +76,8 @@ def calcular_recomendacion(kb, sol: SolicitudRecomendacion) -> RecomendacionResp
     )
 
     reglas = kb.reglas()
-    avisos_reglas, detalle_reglas = _evaluar_reglas(reglas, dosis_total)
+    cultivo_familia = cultivo.get("familia")
+    avisos_reglas, detalle_reglas = _evaluar_reglas(reglas, dosis_total, cultivo_familia)
     advertencias.extend(avisos_reglas)
     evidencia.append(
         PasoEvidencia(
@@ -177,21 +178,29 @@ def calcular_recomendacion(kb, sol: SolicitudRecomendacion) -> RecomendacionResp
     return RecomendacionResponse.model_validate(resp_dict)
 
 
-def _evaluar_reglas(reglas: list[dict], dosis: dict) -> tuple[list[str], list[dict]]:
+def _evaluar_reglas(reglas: list[dict], dosis: dict, familia: Optional[str] = None) -> tuple[list[str], list[dict]]:
     avisos: list[str] = []
     detalles: list[dict] = []
     for r in reglas:
         disparada = False
         tipo = r.get("tipo")
         base = r.get("base")
+        sobreescritura = (r.get("familias") or {}).get(familia or "", {}) if familia else {}
+        nota_familia = sobreescritura.get("nota", "")
         if tipo == "ratio_supera" and base and r.get("nutriente_ref"):
-            factor = float(r["factor"])
+            factor = float(sobreescritura.get("factor", r["factor"]))
             disparada = dosis.get(base, 0.0) > dosis.get(r["nutriente_ref"], 0.0) * factor
+            detalles.append({"regla": r["id"], "disparada": disparada, "familia": familia or "generica", "factor_aplicado": factor})
         elif tipo == "dosis_supera_umbral" and base:
-            disparada = dosis.get(base, 0.0) > float(r["umbral"])
-        detalles.append({"regla": r["id"], "disparada": disparada})
+            umbral = float(sobreescritura.get("umbral", r["umbral"]))
+            disparada = dosis.get(base, 0.0) > umbral
+            detalles.append({"regla": r["id"], "disparada": disparada, "familia": familia or "generica", "umbral_aplicado": umbral})
+        else:
+            detalles.append({"regla": r["id"], "disparada": disparada})
+            continue
         if disparada:
-            avisos.append(f"[{r['id']}] {r['mensaje']} (ref: {r['referencia']})")
+            extra = f" Nota {familia}: {nota_familia}" if nota_familia else ""
+            avisos.append(f"[{r['id']}] {r['mensaje']}{extra} (ref: {r['referencia']})")
     return avisos, detalles
 
 

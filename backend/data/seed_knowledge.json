@@ -130,6 +130,13 @@
       "base": "K",
       "nutriente_ref": "N",
       "factor": 1.5,
+      "familias": {
+        "solanaceae": {"factor": 1.5, "nota": "Frutos acumulan K; desbalance cationico frecuente en fertirriego."},
+        "poaceae": {"factor": 2.0, "nota": "Gramineas toleran mas K; alerta solo con ratios muy altas."},
+        "cucurbitaceae": {"factor": 1.5, "nota": "Alta demanda de K en llenado de fruto."},
+        "rosaceae": {"factor": 1.2, "nota": "Fresa muy sensible a salinidad y exceso cationico; umbral mas estricto."},
+        "asteraceae": {"factor": 1.5, "nota": "Exceso de K afecta absorcion de Ca y aumenta tip-burn en lechuga."}
+      },
       "mensaje": "Dosis alta de K2O respecto a N puede inhibir absorcion de Ca y Mg (antagonismo cationico); considere aporte de calcio/magnesio o analisis foliar.",
       "referencia": "marschner1995"
     },
@@ -138,6 +145,11 @@
       "tipo": "dosis_supera_umbral",
       "base": "P",
       "umbral": 120,
+      "familias": {
+        "poaceae": {"umbral": 100, "nota": "Arroz y maiz sensibles a deficiencia inducida de Zn en suelos inundados o calcareos."},
+        "solanaceae": {"umbral": 130, "nota": "Umbral ligeramente mayor por alta extraccion de P en fruto."},
+        "rosaceae": {"umbral": 90, "nota": "Fresa: sistema radical reducido, vigilar Zn con aplicaciones altas de P."}
+      },
       "mensaje": "Dosis elevada de P2O5 puede inducir deficiencia de Zn (sobre todo en suelos calcareos); monitoree zinc foliar.",
       "referencia": "marschner1995"
     },

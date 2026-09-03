@@ -107,6 +107,44 @@ class TestAntagonismos:
         paso = next(e for e in r.evidencia if "antagonismos" in e.paso.lower())
         assert paso.valores["reglas_evaluadas"]
 
+    def test_umbral_varia_por_familia(self):
+        from app.engine import _evaluar_reglas
+
+        dosis = {"N": 200.0, "P": 110.0, "K": 400.0}
+        poaceae = [
+            {"id": "P_vs_Zn", "tipo": "dosis_supera_umbral", "base": "P",
+             "umbral": 120, "mensaje": "m", "referencia": "r",
+             "familias": {"poaceae": {"umbral": 100, "nota": "n1"}}},
+        ]
+        solanaceae = [
+            {"id": "P_vs_Zn", "tipo": "dosis_supera_umbral", "base": "P",
+             "umbral": 120, "mensaje": "m", "referencia": "r",
+             "familias": {"solanaceae": {"umbral": 130, "nota": "n2"}}},
+        ]
+        avisos_poa, det_poa = _evaluar_reglas(poaceae, dosis, "poaceae")
+        avisos_sol, det_sol = _evaluar_reglas(solanaceae, dosis, "solanaceae")
+        assert det_poa[0]["disparada"] is True and det_poa[0]["umbral_aplicado"] == 100
+        assert "n1" in avisos_poa[0]
+        assert det_sol[0]["disparada"] is False and det_sol[0]["umbral_aplicado"] == 130
+
+    def test_ratio_hereda_default_sin_sobreescritura(self):
+        from app.engine import _evaluar_reglas
+
+        dosis = {"N": 200.0, "P": 10.0, "K": 400.0}
+        reglas = [
+            {"id": "K_vs_CaMg", "tipo": "ratio_supera", "base": "K",
+             "nutriente_ref": "N", "factor": 1.5, "mensaje": "m", "referencia": "r",
+             "familias": {"poaceae": {"factor": 2.0, "nota": "n"}}},
+        ]
+        avisos_ast, det_ast = _evaluar_reglas(reglas, dosis, "asteraceae")
+        assert det_ast[0]["factor_aplicado"] == 1.5 and det_ast[0]["disparada"] is True
+        avisos_poa, det_poa = _evaluar_reglas(reglas, dosis, "poaceae")
+        assert det_poa[0]["factor_aplicado"] == 2.0 and det_poa[0]["disparada"] is False
+
+    def test_regla_integra_incluye_nota_de_familia(self, kb):
+        r = calcular_recomendacion(kb, _solicitud("fresa", 60))
+        assert any("rosaceae" in a.lower() or "fresa" in a.lower() or "salinidad" in a.lower() for a in r.advertencias if a.startswith("["))
+
 
 class TestTrazabilidad:
     def test_respuesta_incluye_referencias_bibliograficas(self, kb):
