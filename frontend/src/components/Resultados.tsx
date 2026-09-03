@@ -6,7 +6,8 @@ import { Alert } from '@/components/ui/alert'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/card'
 import { Evidencia } from './Evidencia'
-import { NUTRIENTES, NOMBRE_NUTRIENTE, cx, fmtNum, type Nutriente } from '@/lib/utils'
+import { Stat } from '@/components/ui/section'
+import { NUTRIENTES, NOMBRE_NUTRIENTE, fmtNum, type Nutriente } from '@/lib/utils'
 import type { Recomendacion } from '@/lib/api'
 
 const COLOR_KPI: Record<Nutriente, string> = {
@@ -61,16 +62,14 @@ export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuarda
         <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-2 max-sm:grid-cols-1">
             {NUTRIENTES.map(n => (
-              <div key={n} className={cx('rounded-lg border border-border bg-background px-3 py-2.5')}>
-                <p className="text-[11px] text-muted-foreground">{NOMBRE_NUTRIENTE[n]}</p>
-                <p className={cx('text-2xl font-semibold tabular-nums', COLOR_KPI[n])}>
-                  {fmtNum(data.dosis_fertilizante_kg_ha[n])}
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">kg/ha</span>
-                </p>
-                <p className="text-[11px] text-muted-foreground tabular-nums">
-                  demanda {fmtNum(data.demanda_total_kg_ha[n])} · suelo aporta {fmtNum(data.aporte_suelo_kg_ha[n])}
-                </p>
-              </div>
+              <Stat
+                key={n}
+                label={NOMBRE_NUTRIENTE[n]}
+                value={fmtNum(data.dosis_fertilizante_kg_ha[n])}
+                unit="kg/ha"
+                sub={`demanda ${fmtNum(data.demanda_total_kg_ha[n])} · suelo aporta ${fmtNum(data.aporte_suelo_kg_ha[n])}`}
+                toneClass={COLOR_KPI[n]}
+              />
             ))}
           </div>
 

@@ -4,6 +4,7 @@ import type { SolicitudRecomendacion } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Alert } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SectionHeader } from '@/components/ui/section'
 import { NUTRIENTES, parseDecimal } from '@/lib/utils'
 import { FormularioLote, type ValoresFormulario } from '@/components/FormularioLote'
 import { Resultados } from '@/components/Resultados'
@@ -11,7 +12,8 @@ import { PlanesGuardados } from '@/components/PlanesGuardados'
 import { Chat } from '@/components/Chat'
 import { LaboratorioGnn } from '@/components/LaboratorioGnn'
 import { Seguimiento } from '@/components/Seguimiento'
-import type { Fase, PlanResumen, Recomendacion } from '@/lib/api'
+import { usePlanes } from '@/hooks/usePlanes'
+import type { Fase, Recomendacion } from '@/lib/api'
 
 const VALORES_INICIALES: ValoresFormulario = {
   rendimiento: '40',
@@ -29,8 +31,7 @@ export default function App() {
   const [errorGlobal, setErrorGlobal] = useState('')
   const [calculando, setCalculando] = useState(false)
   const [modo, setModo] = useState('')
-  const [planes, setPlanes] = useState<PlanResumen[]>([])
-  const [estadoPlanes, setEstadoPlanes] = useState<'cargando' | 'listo' | 'error'>('cargando')
+  const { planes, estadoPlanes, recargarPlanes, eliminarPlan } = usePlanes()
 
   useEffect(() => {
     api.health().then(setModo).catch(() => {})
@@ -41,7 +42,6 @@ export default function App() {
         if (data.length) seleccionarCultivo(data[0].id)
       })
       .catch(() => setErrorGlobal('No se pudo conectar con la API. Verifica que el backend esté corriendo.'))
-    recargarPlanes()
   }, [])
 
   async function seleccionarCultivo(id: string) {
@@ -111,17 +111,6 @@ export default function App() {
     }
   }
 
-  function recargarPlanes() {
-    setEstadoPlanes('cargando')
-    api
-      .listarPlanes()
-      .then(p => {
-        setPlanes(p)
-        setEstadoPlanes('listo')
-      })
-      .catch(() => setEstadoPlanes('error'))
-  }
-
   async function abrirPlan(id: string) {
     try {
       const plan = await api.abrirPlan(id)
@@ -135,8 +124,7 @@ export default function App() {
   async function eliminarPlanSeguro(id: string) {
     if (!window.confirm('¿Eliminar este plan?')) return
     try {
-      await api.eliminarPlan(id)
-      recargarPlanes()
+      await eliminarPlan(id)
     } catch (e) {
       setErrorGlobal(e instanceof Error ? e.message : 'Error al eliminar')
     }
@@ -155,11 +143,11 @@ export default function App() {
           Planifica por cultivo · Sigue tu siembra por fase · Resuelve dudas con el asistente
         </p>
         <nav aria-label="Secciones" className="mt-3 flex flex-wrap gap-1.5 text-xs">
-          <a href="#planificar" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-primary">1 · Planificar</a>
+          <a href="#planificar" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary hover:text-foreground">1 · Planificar</a>
           <span className="self-center text-muted-foreground">→</span>
-          <a href="#seguimiento" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-primary">2 · Seguimiento</a>
+          <a href="#seguimiento" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary hover:text-foreground">2 · Seguimiento</a>
           <span className="self-center text-muted-foreground">→</span>
-          <a href="#asistente" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:text-foreground hover:border-primary">3 · Asistente</a>
+          <a href="#asistente" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary hover:text-foreground">3 · Asistente</a>
         </nav>
       </header>
 
@@ -178,10 +166,7 @@ export default function App() {
         ) : (
           <>
             <section id="planificar" className="scroll-mt-4 space-y-4">
-              <h2 className="text-sm font-semibold">
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">1</span>
-                Planifica tu fertilización
-              </h2>
+              <SectionHeader paso="1" titulo="Planifica tu fertilización" />
               <FormularioLote
                 cultivos={cultivos}
                 cultivoId={cultivoId}
@@ -206,20 +191,14 @@ export default function App() {
             </section>
 
             <section id="seguimiento" className="scroll-mt-4 space-y-4">
-              <h2 className="text-sm font-semibold">
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">2</span>
-                Sigue tu siembra fase a fase
-              </h2>
+              <SectionHeader paso="2" titulo="Sigue tu siembra fase a fase" />
               <Seguimiento planes={planes.map(p => ({ id: p.id, nombre: p.nombre }))} />
 
               <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
             </section>
 
             <section id="asistente" className="scroll-mt-4 space-y-4">
-              <h2 className="text-sm font-semibold">
-                <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">3</span>
-                Resuelve dudas con el asistente
-              </h2>
+              <SectionHeader paso="3" titulo="Resuelve dudas con el asistente" />
               <Chat />
             </section>
           </>

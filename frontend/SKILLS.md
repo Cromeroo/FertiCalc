@@ -9,6 +9,32 @@
 - Tailwind CSS v4 (`@tailwindcss/vite`), tokens en `@theme` dentro de `src/index.css`
 - Componentes `ui/` estilo shadcn escritos localmente (sin Radix por ahora); si se necesita un primitivo accesible complejo, proponer migrar ese componente a shadcn/ui real
 
+## Estructura
+
+```
+src/
+├── components/
+│   ├── ui/            # primitivos reutilizables: button, input, label, card (+Table),
+│   │                  # badge, skeleton, alert, decimal, tabs, progress,
+│   │                  # empty-state (EmptyState/ErrorState/LoadingList), section
+│   │                  # (SectionHeader/Stat/FieldHint), calendar (CalendarioMes)
+│   ├── seguimiento/   # feature Seguimiento: container + ListaSiembras +
+│   │                  # FormularioSiembra + DetalleSiembra + LineaTiempo +
+│   │                  # CalendarioSiembra + AgendaGlobal
+│   └── laboratorio/   # feature Laboratorio: container + FormularioCultivo +
+│                      # ExplicacionPanel + TablaCurva
+├── hooks/             # useSiembras, usePlanes, useLaboratorio (estado + API)
+├── lib/               # api.ts (único fetch), utils.ts (cx, fmt, parseDecimal)
+└── App.tsx            # shell: header, nav, secciones, footer (sin lógica de negocio)
+```
+
+Reglas de componentización:
+
+- Ningún componente de feature supera ~150 líneas; si crece, partir en subcomponentes por responsabilidad.
+- La lógica de datos vive en `hooks/`; los componentes reciben props y renderizan.
+- Los contenedores (`Seguimiento`, `LaboratorioGnn`, `App`) solo orquestan hooks + layout.
+- Nuevos patrones visuales van primero a `ui/` como primitivos reutilizables.
+
 ## Reglas específicas del dominio
 
 1. **Colores de nutrientes fijos**: N → `text-nutrient-n`, P → `text-nutrient-p`, K → `text-nutrient-k`. Nunca otros colores para nutrientes.
