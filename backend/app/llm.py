@@ -116,6 +116,77 @@ HERRAMIENTAS = [
                 },
             },
             {
+                "name": "listar_siembras",
+                "description": (
+                    "Lista las siembras en seguimiento con familia, especie, lote, plan, "
+                    "fecha de inicio y BBCH actual. Acepta filtro opcional por familia botanica."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "familia": {
+                            "type": "STRING",
+                            "description": "Filtra por familia botanica (ej. solanaceae). Opcional.",
+                        },
+                    },
+                },
+            },
+            {
+                "name": "estado_siembra",
+                "description": (
+                    "Devuelve el calendario de una siembra: por cada fase, fecha estimada, "
+                    "dosis y estado (pendiente, aplicada, omitida). Usa el id de siembra de listar_siembras."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {"siembra_id": {"type": "STRING"}},
+                    "required": ["siembra_id"],
+                },
+            },
+            {
+                "name": "ajustar_bbch",
+                "description": (
+                    "Actualiza el codigo BBCH observado en campo para una siembra (ej. '51'). "
+                    "Sirve para decirle al sistema en que estado fenologico real va el cultivo."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "siembra_id": {"type": "STRING"},
+                        "bbch_actual": {"type": "STRING"},
+                    },
+                    "required": ["siembra_id", "bbch_actual"],
+                },
+            },
+            {
+                "name": "plan_cultivo_personalizado",
+                "description": (
+                    "Genera el PLAN COMPLETO de fertilizacion (kg/ha por fase, fuentes sugeridas) para un "
+                    "cultivo sin curva publicada: primero predice la curva con GNN segun familia botanica y "
+                    "luego calcula dosis deterministas. Requiere rendimiento esperado."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "extraccion_n_kg_t": {"type": "NUMBER"},
+                        "extraccion_p2o5_kg_t": {"type": "NUMBER"},
+                        "extraccion_k2o_kg_t": {"type": "NUMBER"},
+                        "rendimiento_t_ha": {"type": "NUMBER"},
+                        "familia": {"type": "STRING"},
+                        "num_fases": {"type": "INTEGER"},
+                        "n_disponible_kg_ha": {"type": "NUMBER"},
+                        "p2o5_disponible_kg_ha": {"type": "NUMBER"},
+                        "k2o_disponible_kg_ha": {"type": "NUMBER"},
+                    },
+                    "required": [
+                        "extraccion_n_kg_t",
+                        "extraccion_p2o5_kg_t",
+                        "extraccion_k2o_kg_t",
+                        "rendimiento_t_ha",
+                    ],
+                },
+            },
+            {
                 "name": "plan_cultivo_personalizado",
                 "description": (
                     "Genera el PLAN COMPLETO de fertilizacion (kg/ha por fase, fuentes sugeridas) para un "
@@ -157,7 +228,39 @@ Reglas obligatorias:
 5. Los cultivos tienen ids tecnicos (tomate, maiz, chile, fresa, lechuga, papa, sandia): usa listar_cultivos si el usuario no es claro.
 6. Responde en espanol, tono tecnico claro y conciso. Estructura: respuesta directa primero, detalle despues.
 7. Para preguntas conceptuales o de respaldo bibliografico usa buscar_literatura y cita el titulo del documento del fragmento. Si no hay resultados, dilo honestamente.
-8. Si ofreces una curva predicha con predecir_curva_gnn, dejara claro que es PREDICCION IA EXPERIMENTAL no validada experimentalmente."""
+ 8. Si ofreces una curva predicha con predecir_curva_gnn, dejara claro que es PREDICCION IA EXPERIMENTAL no validada experimentalmente.
+  9. Para preguntas de seguimiento de un lote ya sembrado usa listar_siembras, estado_siembra y ajustar_bbch. La siguiente aplicacion pendiente es la que toca hacer. Si el usuario menciona una familia o especie, filtra con el parametro familia de listar_siembras."""
+
+
+def _calendario_simple(siembra: dict, plan: dict) -> dict:
+    from datetime import datetime
+
+    inicio = datetime.fromisoformat(siembra["fecha_inicio"])
+    dias_fase = float(siembra["dias_estimados_fase"])
+    estados = {a["orden_fase"]: a["estado"] for a in siembra.get("aplicaciones", [])}
+    fases = []
+    for fase in plan["recomendacion"]["fases"]:
+        fecha = (inicio.timestamp() + (fase["orden"] - 1) * dias_fase * 86400)
+        fases.append(
+            {
+                "orden": fase["orden"],
+                "nombre": fase["nombre"],
+                "fecha_estimada": datetime.fromtimestamp(fecha, tz=inicio.tzinfo).date().isoformat(),
+                "dosis_nutriente_kg_ha": fase["dosis_nutriente_kg_ha"],
+                "fuentes": [
+                    {"nombre": s["nombre"], "kg_ha": s["kg_ha"]}
+                    for s in fase["fuentes_sugeridas"]
+                ],
+                "estado": estados.get(fase["orden"], "pendiente"),
+            }
+        )
+    siguiente = next((f for f in fases if f["estado"] == "pendiente"), None)
+    return {
+        "plan_nombre": plan["nombre"],
+        "bbch_actual": siembra.get("bbch_actual", "00"),
+        "fases": fases,
+        "siguiente_aplicacion": siguiente,
+    }
 
 
 def _driver_factory():
@@ -280,6 +383,34 @@ def _ejecutar_herramienta(kb, nombre: str, args: dict) -> dict:
             num_fases=args.get("num_fases"),
             familia=(args.get("familia") or "").strip() or None,
         )
+
+    if nombre == "listar_siembras":
+        from . import db as _db
+
+        todas = _db.listar_siembras()
+        familia = (args.get("familia") or "").strip().lower()
+        if familia:
+            todas = [s for s in todas if (s.get("familia") or "") == familia]
+        return {"siembras": todas}
+
+    if nombre == "estado_siembra":
+        from . import db as _db
+
+        siembra = _db.obtener_siembra(args["siembra_id"])
+        if not siembra:
+            return {"error": f"Siembra no encontrada: {args['siembra_id']}"}
+        plan = _db.obtener_plan(siembra["plan_id"])
+        if not plan:
+            return {"error": "Plan de la siembra no encontrado"}
+        return _calendario_simple(siembra, plan)
+
+    if nombre == "ajustar_bbch":
+        from . import db as _db
+
+        ok = _db.actualizar_bbch(args["siembra_id"], args["bbch_actual"])
+        if not ok:
+            return {"error": f"Siembra no encontrada: {args['siembra_id']}"}
+        return {"siembra_id": args["siembra_id"], "bbch_actual": args["bbch_actual"]}
 
     if nombre == "extraccion_referencia_familia":
         from .gnn import resumen_familia

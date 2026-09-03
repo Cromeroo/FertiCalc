@@ -51,6 +51,12 @@ export function LaboratorioGnn() {
 
   async function predecir(e: React.FormEvent) {
     e.preventDefault()
+    const n = Number(ext.N), p = Number(ext.P), k = Number(ext.K)
+    const rend = Number(rendimiento)
+    if (![n, p, k, rend].every(v => Number.isFinite(v) && v > 0)) {
+      setError('Revisa los valores: extracción N/P/K y rendimiento deben ser números mayores a 0.')
+      return
+    }
     setCargando(true)
     setError('')
     try {
@@ -113,19 +119,19 @@ export function LaboratorioGnn() {
             <p className="mb-1.5 text-[10px] text-muted-foreground">No es fertilizante. Es cuánto la planta extrae por tonelada cosechada. El laboratorio calculará el fertilizante por ti.</p>
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-28">
-                <Input id="gnn-n" type="number" min="0.01" step="0.1" value={ext.N}
+                <Input id="gnn-n" type="number" min="0.01" step="0.01" inputMode="decimal" value={ext.N}
                   aria-label="Extracción de nitrógeno kg/t"
                   onChange={e => { setExt({ ...ext, N: e.target.value }); setEditadoManual(true) }} required />
                 <p className="mt-1 text-[10px] text-muted-foreground">N extraído (kg/t)</p>
               </div>
               <div className="w-28">
-                <Input id="gnn-p" type="number" min="0.01" step="0.1" value={ext.P}
+                <Input id="gnn-p" type="number" min="0.01" step="0.01" inputMode="decimal" value={ext.P}
                   aria-label="Extracción de fósforo kg/t"
                   onChange={e => { setExt({ ...ext, P: e.target.value }); setEditadoManual(true) }} required />
                 <p className="mt-1 text-[10px] text-muted-foreground">P₂O₅ extraído (kg/t)</p>
               </div>
               <div className="w-28">
-                <Input id="gnn-k" type="number" min="0.01" step="0.1" value={ext.K}
+                <Input id="gnn-k" type="number" min="0.01" step="0.01" inputMode="decimal" value={ext.K}
                   aria-label="Extracción de potasio kg/t"
                   onChange={e => { setExt({ ...ext, K: e.target.value }); setEditadoManual(true) }} required />
                 <p className="mt-1 text-[10px] text-muted-foreground">K₂O extraído (kg/t)</p>

@@ -251,3 +251,104 @@ def plan_gnn(req: PlanPersonalizadoRequest):
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+class CrearSiembraRequest(BaseModel):
+    plan_id: str = Field(..., min_length=1)
+    fecha_inicio: str = Field(..., min_length=8, max_length=10)
+    dias_estimados_fase: Optional[float] = Field(None, gt=0, le=365)
+    familia: str = Field("", max_length=60)
+    especie: str = Field("", max_length=120)
+
+
+DIAS_POR_FAMILIA = {
+    "solanaceae": 16,
+    "poaceae": 20,
+    "rosaceae": 22,
+    "asteraceae": 12,
+    "cucurbitaceae": 15,
+}
+DIAS_DEFAULT = 18
+
+
+def _calendario(siembra: dict, plan: dict) -> list[dict]:
+    from datetime import datetime
+
+    inicio = datetime.fromisoformat(siembra["fecha_inicio"])
+    dias_fase = float(siembra["dias_estimados_fase"])
+    estados = {a["orden_fase"]: a for a in siembra.get("aplicaciones", [])}
+    calendario = []
+    for fase in plan["recomendacion"]["fases"]:
+        orden = fase["orden"]
+        est = estados.get(orden, {})
+        fecha_estimada = inicio.timestamp() + (orden - 1) * dias_fase * 86400
+        calendario.append(
+            {
+                "orden": orden,
+                "nombre_fase": fase["nombre"],
+                "bbch": fase["bbch"],
+                "fecha_estimada": datetime.fromtimestamp(fecha_estimada, tz=inicio.tzinfo).date().isoformat(),
+                "dosis_nutriente_kg_ha": fase["dosis_nutriente_kg_ha"],
+                "fuentes_sugeridas": fase["fuentes_sugeridas"],
+                "estado": est.get("estado", "pendiente"),
+                "aplicada": est.get("aplicada", ""),
+            }
+        )
+    return calendario
+
+
+@app.post("/api/siembras")
+def crear_siembra(req: CrearSiembraRequest):
+    plan = db.obtener_plan(req.plan_id)
+    if not plan:
+        raise HTTPException(404, "Plan no encontrado")
+    cultivo = get_knowledge().cultivo(plan.get("cultivo_id") or "")
+    familia = (req.familia or "").strip().lower() or (cultivo or {}).get("familia", "")
+    dias = req.dias_estimados_fase or DIAS_POR_FAMILIA.get(familia, DIAS_DEFAULT)
+    sid = db.crear_siembra(req.plan_id, req.fecha_inicio, dias, familia, req.especie)
+    return {"id": sid, "dias_estimados_fase": dias, "familia": familia}
+
+
+@app.get("/api/siembras")
+def listar_siembras():
+    return db.listar_siembras()
+
+
+@app.get("/api/siembras/{siembra_id}")
+def estado_siembra(siembra_id: str):
+    siembra = db.obtener_siembra(siembra_id)
+    if not siembra:
+        raise HTTPException(404, "Siembra no encontrada")
+    plan = db.obtener_plan(siembra["plan_id"])
+    if not plan:
+        raise HTTPException(404, "Plan de la siembra no encontrado")
+    return {
+        "siembra": {k: v for k, v in siembra.items() if k != "aplicaciones"},
+        "plan_nombre": plan["nombre"],
+        "calendario": _calendario(siembra, plan),
+    }
+
+
+class AplicarFaseRequest(BaseModel):
+    estado: str = Field("aplicada", min_length=1, max_length=20)
+
+
+@app.post("/api/siembras/{siembra_id}/fase/{orden}")
+def marcar_fase(siembra_id: str, orden: int, req: AplicarFaseRequest):
+    if not db.obtener_siembra(siembra_id):
+        raise HTTPException(404, "Siembra no encontrada")
+    if req.estado not in ("aplicada", "omitida", "pendiente"):
+        raise HTTPException(400, "Estado debe ser aplicada, omitida o pendiente")
+    db.marcar_aplicacion(siembra_id, orden, req.estado)
+    return {"siembra_id": siembra_id, "orden": orden, "estado": req.estado}
+
+
+class ActualizarBbchRequest(BaseModel):
+    bbch_actual: str = Field(..., min_length=2, max_length=5)
+
+
+@app.post("/api/siembras/{siembra_id}/bbch")
+def actualizar_bbch(siembra_id: str, req: ActualizarBbchRequest):
+    if not db.actualizar_bbch(siembra_id, req.bbch_actual):
+        raise HTTPException(404, "Siembra no encontrada")
+    return {"siembra_id": siembra_id, "bbch_actual": req.bbch_actual}
