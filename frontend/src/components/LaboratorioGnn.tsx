@@ -7,7 +7,10 @@ import { ExplicacionPanel } from './laboratorio/ExplicacionPanel'
 import { TablaCurva } from './laboratorio/TablaCurva'
 import { Resultados } from './Resultados'
 
-export function LaboratorioGnn() {
+export function LaboratorioGnn({ onGuardado, onVerSeguimiento }: {
+  onGuardado?: () => void
+  onVerSeguimiento?: () => void
+}) {
   const lab = useLaboratorio()
   const pred = lab.prediccion
 
@@ -57,7 +60,7 @@ export function LaboratorioGnn() {
               <ExplicacionPanel explicacion={pred.explicacion} mae={lab.mae} />
             )}
             <TablaCurva curva={pred.curva_predicha} />
-            <Resultados data={lab.resultado.plan} />
+            <Resultados data={lab.resultado.plan} onGuardado={onGuardado} onVerSeguimiento={onVerSeguimiento} />
           </div>
         )}
       </CardContent>

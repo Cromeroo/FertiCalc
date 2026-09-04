@@ -253,7 +253,7 @@ export default function App() {
                   ¿Tu cultivo no está en el catálogo? Estímalo con IA
                 </summary>
                 <div className="pt-3">
-                  <LaboratorioGnn />
+                  <LaboratorioGnn onGuardado={recargarPlanes} onVerSeguimiento={irASeguimiento} />
                 </div>
               </details>
             </section>
