@@ -23,10 +23,11 @@ interface Props {
   valores: ValoresFormulario
   onChange: (v: ValoresFormulario) => void
   onCalcular: (e: React.FormEvent) => void
+  onCalcularYGuardar?: (e: React.FormEvent) => void
   cargando: boolean
 }
 
-export function FormularioLote({ cultivos, cultivoId, onCultivo, fases, valores, onChange, onCalcular, cargando }: Props) {
+export function FormularioLote({ cultivos, cultivoId, onCultivo, fases, valores, onChange, onCalcular, onCalcularYGuardar, cargando }: Props) {
   return (
     <Card>
       <CardHeader>
@@ -122,9 +123,16 @@ export function FormularioLote({ cultivos, cultivoId, onCultivo, fases, valores,
             </Field>
           )}
 
-          <Button type="submit" size="lg" disabled={cargando || !cultivoId}>
-            {cargando ? 'Calculando…' : 'Calcular plan de fertilización'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" size="lg" disabled={cargando || !cultivoId}>
+              {cargando ? 'Calculando…' : 'Calcular plan de fertilización'}
+            </Button>
+            {onCalcularYGuardar && (
+              <Button type="button" size="lg" variant="secondary" disabled={cargando || !cultivoId} onClick={onCalcularYGuardar}>
+                {cargando ? 'Calculando…' : 'Calcular y guardar con nombre'}
+              </Button>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>

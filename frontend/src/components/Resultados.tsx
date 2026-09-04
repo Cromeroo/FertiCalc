@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as api from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -19,7 +19,13 @@ const COLOR_KPI: Record<Nutriente, string> = {
   K: 'text-nutrient-k'
 }
 
-export function Resultados({ data, onGuardado, onVerSeguimiento }: { data: Recomendacion; onGuardado?: () => void; onVerSeguimiento?: () => void }) {
+export function Resultados({ data, onGuardado, onVerSeguimiento, autoAbrirDialogo, onDialogoCerrado }: {
+  data: Recomendacion
+  onGuardado?: () => void
+  onVerSeguimiento?: () => void
+  autoAbrirDialogo?: boolean
+  onDialogoCerrado?: () => void
+}) {
   const [guardando, setGuardando] = useState(false)
   const [dialogo, setDialogo] = useState(false)
   const [nombre, setNombre] = useState('')
@@ -28,6 +34,16 @@ export function Resultados({ data, onGuardado, onVerSeguimiento }: { data: Recom
   function abrirDialogo() {
     setNombre(`${data.cultivo_nombre} — ${data.rendimiento_t_ha} t/ha`)
     setDialogo(true)
+  }
+
+  useEffect(() => {
+    if (autoAbrirDialogo) abrirDialogo()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAbrirDialogo, data])
+
+  function cerrarDialogo() {
+    setDialogo(false)
+    onDialogoCerrado?.()
   }
 
   async function guardar(e: React.FormEvent) {
@@ -163,11 +179,11 @@ export function Resultados({ data, onGuardado, onVerSeguimiento }: { data: Recom
 
       <Dialog
         open={dialogo}
-        onClose={() => setDialogo(false)}
+        onClose={cerrarDialogo}
         titulo="Guardar plan de fertilización"
         acciones={
           <>
-            <Button variant="ghost" size="sm" onClick={() => setDialogo(false)}>Cancelar</Button>
+            <Button variant="ghost" size="sm" onClick={cerrarDialogo}>Cancelar</Button>
             <Button size="sm" onClick={guardar} disabled={guardando || !nombre.trim()}>
               {guardando ? 'Guardando…' : 'Guardar'}
             </Button>

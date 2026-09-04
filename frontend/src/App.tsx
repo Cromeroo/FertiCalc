@@ -29,6 +29,7 @@ export default function App() {
   const [fases, setFases] = useState<Fase[]>([])
   const [valores, setValores] = useState<ValoresFormulario>(VALORES_INICIALES)
   const [resultado, setResultado] = useState<Recomendacion | null>(null)
+  const [autoGuardar, setAutoGuardar] = useState(false)
   const [errorGlobal, setErrorGlobal] = useState('')
   const [calculando, setCalculando] = useState(false)
   const [modo, setModo] = useState('')
@@ -94,9 +95,19 @@ export default function App() {
 
   async function calcular(e: React.FormEvent) {
     e.preventDefault()
+    await ejecutarCalculo(false)
+  }
+
+  async function calcularYGuardar(e: React.FormEvent) {
+    e.preventDefault()
+    await ejecutarCalculo(true)
+  }
+
+  async function ejecutarCalculo(conGuardado: boolean) {
     const problema = validarValores()
     if (problema) {
       setResultado(null)
+      setAutoGuardar(false)
       setErrorGlobal(problema)
       return
     }
@@ -104,11 +115,13 @@ export default function App() {
     setErrorGlobal('')
     try {
       setResultado(await api.calcularRecomendacion(construirSolicitud()))
+      setAutoGuardar(conGuardado)
       window.setTimeout(() => {
         document.getElementById('resultado')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
     } catch (err) {
       setResultado(null)
+      setAutoGuardar(false)
       setErrorGlobal(err instanceof Error ? err.message : 'Error inesperado')
     } finally {
       setCalculando(false)
@@ -209,8 +222,7 @@ export default function App() {
                   <p className="font-medium text-foreground">Para crear un plan nuevo, sigue estos pasos:</p>
                   <ol className="mt-1 list-decimal space-y-0.5 pl-4">
                     <li>Elige el cultivo y el rendimiento esperado abajo.</li>
-                    <li>Pulsa <strong className="text-foreground">«Calcular plan de fertilización»</strong>.</li>
-                    <li>En el resultado que aparece, pulsa <strong className="text-foreground">«Guardar plan»</strong> y ponle un nombre.</li>
+                    <li>Pulsa <strong className="text-foreground">«Calcular y guardar con nombre»</strong> para calcular y ponerle nombre al plan en un solo paso (o solo «Calcular» si prefieres revisar antes).</li>
                   </ol>
                 </div>
               )}
@@ -222,6 +234,7 @@ export default function App() {
                 valores={valores}
                 onChange={setValores}
                 onCalcular={calcular}
+                onCalcularYGuardar={calcularYGuardar}
                 cargando={calculando}
               />
 
@@ -230,6 +243,8 @@ export default function App() {
                   data={resultado}
                   onGuardado={recargarPlanes}
                   onVerSeguimiento={irASeguimiento}
+                  autoAbrirDialogo={autoGuardar}
+                  onDialogoCerrado={() => setAutoGuardar(false)}
                 />
               )}
 
