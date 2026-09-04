@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { CalendarioSiembra } from './CalendarioSiembra'
 import { LineaTiempo } from './LineaTiempo'
+import { calendarioIcs, descargarIcs } from '@/lib/calendar'
 import type { EstadoSiembra, SiembraResumen } from '@/lib/api'
 
 type VistaDetalle = 'linea' | 'mes'
@@ -31,6 +32,28 @@ export function DetalleSiembra({ detalle, seleccionada, onVolver, onCambiar }: P
           </p>
         </div>
         <Button variant="ghost" size="sm" onClick={onVolver}>‹ Mis siembras</Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            descargarIcs(
+              `ferticalc-${detalle.plan_nombre}`,
+              calendarioIcs(
+                detalle.plan_nombre,
+                detalle.calendario,
+                seleccionada?.cultivo_nombre ?? undefined
+              )
+            )
+          }
+        >
+          ⬇ Descargar calendario (.ics)
+        </Button>
+        <span className="self-center text-[11px] text-muted-foreground">
+          Impórtalo en Google Calendar u Outlook para recibir notificaciones.
+        </span>
       </div>
 
       <Progress value={hechas} max={total} label={`Progreso: ${hechas} de ${total} fases`} />
@@ -61,7 +84,11 @@ export function DetalleSiembra({ detalle, seleccionada, onVolver, onCambiar }: P
       </div>
 
       {vista === 'linea' ? (
-        <LineaTiempo calendario={detalle.calendario} onCambiar={onCambiar} />
+        <LineaTiempo
+          calendario={detalle.calendario}
+          cultivo={seleccionada?.cultivo_nombre ?? detalle.plan_nombre}
+          onCambiar={onCambiar}
+        />
       ) : (
         <CalendarioSiembra detalle={detalle} onCambiar={onCambiar} />
       )}

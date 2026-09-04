@@ -1,14 +1,16 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { fmtNum } from '@/lib/utils'
+import { googleCalendarUrl } from '@/lib/calendar'
 import type { FaseCalendario } from '@/lib/api'
 
 interface Props {
   fase: FaseCalendario
+  cultivo?: string
   onCambiar: (nuevo: 'aplicada' | 'omitida' | 'pendiente') => void
 }
 
-export function FaseCard({ fase, onCambiar }: Props) {
+export function FaseCard({ fase, cultivo, onCambiar }: Props) {
   const hecha = fase.estado !== 'pendiente'
   return (
     <li className={`relative rounded-xl border p-3 ${hecha ? 'border-border bg-background opacity-60' : 'border-primary/40 bg-card'}`}>
@@ -45,18 +47,29 @@ export function FaseCard({ fase, onCambiar }: Props) {
           <p key={s.fuente_id}>• {s.nombre}: <strong className="tabular-nums">{fmtNum(s.kg_ha)} kg/ha</strong></p>
         ))}
       </div>
+      {!hecha && (
+        <a
+          href={googleCalendarUrl(fase, cultivo)}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2 inline-block text-[11px] text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          📅 Añadir recordatorio a Google Calendar
+        </a>
+      )}
     </li>
   )
 }
 
-export function LineaTiempo({ calendario, onCambiar }: {
+export function LineaTiempo({ calendario, cultivo, onCambiar }: {
   calendario: FaseCalendario[]
+  cultivo?: string
   onCambiar: (orden: number, nuevo: 'aplicada' | 'omitida' | 'pendiente') => void
 }) {
   return (
     <ol className="relative space-y-3 border-l-2 border-border pl-4">
       {calendario.map(f => (
-        <FaseCard key={f.orden} fase={f} onCambiar={nuevo => onCambiar(f.orden, nuevo)} />
+        <FaseCard key={f.orden} fase={f} cultivo={cultivo} onCambiar={nuevo => onCambiar(f.orden, nuevo)} />
       ))}
     </ol>
   )
