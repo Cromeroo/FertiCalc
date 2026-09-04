@@ -9,20 +9,22 @@ interface Props {
   estado: 'cargando' | 'listo' | 'error'
   onAbrir: (id: string) => void
   onEliminar: (id: string) => void
+  onNuevo: () => void
 }
 
-export function PlanesGuardados({ planes, estado, onAbrir, onEliminar }: Props) {
+export function PlanesGuardados({ planes, estado, onAbrir, onEliminar, onNuevo }: Props) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Planes guardados</CardTitle>
+        <Button size="sm" onClick={onNuevo}>＋ Nuevo plan</Button>
       </CardHeader>
       <CardContent>
         {estado === 'cargando' && <Skeleton className="h-10 w-full" />}
 
         {estado === 'listo' && planes.length === 0 && (
           <p className="text-xs italic text-muted-foreground">
-            Aún no hay planes guardados. Calcula un plan y pulsa «Guardar plan».
+            Aún no hay planes guardados. Pulsa «Nuevo plan» para calcular el primero.
           </p>
         )}
 

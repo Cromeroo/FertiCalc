@@ -23,6 +23,7 @@ const VALORES_INICIALES: ValoresFormulario = {
 }
 
 export default function App() {
+  const [vista, setVista] = useState<'planificar' | 'seguimiento' | 'asistente'>('planificar')
   const [cultivos, setCultivos] = useState<api.CultivoResumen[]>([])
   const [cultivoId, setCultivoId] = useState('')
   const [fases, setFases] = useState<Fase[]>([])
@@ -115,10 +116,21 @@ export default function App() {
     try {
       const plan = await api.abrirPlan(id)
       setResultado(plan.recomendacion)
+      setVista('planificar')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch {
       setErrorGlobal('No se pudo abrir el plan')
     }
+  }
+
+  function irAPlanificar() {
+    setVista('planificar')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function irASeguimiento() {
+    setVista('seguimiento')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   async function eliminarPlanSeguro(id: string) {
@@ -132,24 +144,41 @@ export default function App() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6">
-      <header className="mb-5">
-        <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-40 -mx-4 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-2">
           <h1 className="text-xl font-semibold tracking-tight text-primary">FertiCalc</h1>
           <Badge variant={modo === 'neo4j' ? 'info' : modo === 'json' ? 'success' : 'outline'}>
             {modo === 'neo4j' ? 'grafo Neo4j' : modo === 'json' ? 'semilla JSON' : 'conectando…'}
           </Badge>
+          <nav aria-label="Vistas" className="ml-auto flex gap-1 rounded-lg border border-border bg-background p-1 text-xs">
+            {([
+              ['planificar', '1 · Planificar'],
+              ['seguimiento', '2 · Seguimiento'],
+              ['asistente', '3 · Asistente']
+            ] as const).map(([v, etiqueta]) => (
+              <button
+                key={v}
+                type="button"
+                aria-current={vista === v ? 'page' : undefined}
+                onClick={() => {
+                  setVista(v)
+                  window.scrollTo({ top: 0 })
+                }}
+                className={`rounded-md px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  vista === v ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {etiqueta}
+              </button>
+            ))}
+          </nav>
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+      </header>
+
+      <div className="mx-auto max-w-4xl px-4 pb-6">
+        <p className="mb-5 text-xs text-muted-foreground">
           Planifica por cultivo · Sigue tu siembra por fase · Resuelve dudas con el asistente
         </p>
-        <nav aria-label="Secciones" className="mt-3 flex flex-wrap gap-1.5 text-xs">
-          <a href="#planificar" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary hover:text-foreground">1 · Planificar</a>
-          <span className="self-center text-muted-foreground">→</span>
-          <a href="#seguimiento" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary hover:text-foreground">2 · Seguimiento</a>
-          <span className="self-center text-muted-foreground">→</span>
-          <a href="#asistente" className="rounded-full border border-border px-2.5 py-1 text-muted-foreground hover:border-primary hover:text-foreground">3 · Asistente</a>
-        </nav>
-      </header>
 
       {errorGlobal && (
         <Alert variant="destructive" title="No se pudo completar la operación" className="mb-4">
@@ -165,7 +194,7 @@ export default function App() {
           </>
         ) : (
           <>
-            <section id="planificar" className="scroll-mt-4 space-y-4">
+            <section aria-label="Planificar" hidden={vista !== 'planificar'} className="space-y-4">
               <SectionHeader paso="1" titulo="Planifica tu fertilización" />
               <FormularioLote
                 cultivos={cultivos}
@@ -178,7 +207,13 @@ export default function App() {
                 cargando={calculando}
               />
 
-              {resultado && <Resultados data={resultado} onGuardado={recargarPlanes} />}
+              {resultado && (
+                <Resultados
+                  data={resultado}
+                  onGuardado={recargarPlanes}
+                  onVerSeguimiento={irASeguimiento}
+                />
+              )}
 
               <details className="rounded-xl border border-border bg-card px-4 py-3">
                 <summary className="cursor-pointer select-none text-sm font-medium text-primary marker:content-none">
@@ -190,20 +225,27 @@ export default function App() {
               </details>
             </section>
 
-            <section id="seguimiento" className="scroll-mt-4 space-y-4">
+            <section aria-label="Seguimiento" hidden={vista !== 'seguimiento'} className="space-y-4">
               <SectionHeader paso="2" titulo="Sigue tu siembra fase a fase" />
               <Seguimiento planes={planes.map(p => ({ id: p.id, nombre: p.nombre }))} />
 
-              <PlanesGuardados planes={planes} estado={estadoPlanes} onAbrir={abrirPlan} onEliminar={eliminarPlanSeguro} />
+              <PlanesGuardados
+                planes={planes}
+                estado={estadoPlanes}
+                onAbrir={abrirPlan}
+                onEliminar={eliminarPlanSeguro}
+                onNuevo={irAPlanificar}
+              />
             </section>
 
-            <section id="asistente" className="scroll-mt-4 space-y-4">
+            <section aria-label="Asistente" hidden={vista !== 'asistente'} className="space-y-4">
               <SectionHeader paso="3" titulo="Resuelve dudas con el asistente" />
               <Chat />
             </section>
           </>
         )}
       </main>
+      </div>
 
       <footer className="py-6 text-center text-[11px] text-muted-foreground">
         MVP de demostración · Valores de extracción tomados de literatura científica · Validar con agrónomo antes de uso productivo.

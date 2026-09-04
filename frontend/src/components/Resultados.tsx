@@ -6,6 +6,9 @@ import { Alert } from '@/components/ui/alert'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/card'
 import { Evidencia } from './Evidencia'
+import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Stat } from '@/components/ui/section'
 import { NUTRIENTES, NOMBRE_NUTRIENTE, fmtNum, type Nutriente } from '@/lib/utils'
 import type { Recomendacion } from '@/lib/api'
@@ -16,23 +19,29 @@ const COLOR_KPI: Record<Nutriente, string> = {
   K: 'text-nutrient-k'
 }
 
-export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuardado?: () => void }) {
+export function Resultados({ data, onGuardado, onVerSeguimiento }: { data: Recomendacion; onGuardado?: () => void; onVerSeguimiento?: () => void }) {
   const [guardando, setGuardando] = useState(false)
+  const [dialogo, setDialogo] = useState(false)
+  const [nombre, setNombre] = useState('')
   const [mensaje, setMensaje] = useState('')
 
-  async function guardar() {
-    const nombre = window.prompt('Nombre del plan:', `${data.cultivo_nombre} — ${data.rendimiento_t_ha} t/ha`)
-    if (!nombre) return
+  function abrirDialogo() {
+    setNombre(`${data.cultivo_nombre} — ${data.rendimiento_t_ha} t/ha`)
+    setDialogo(true)
+  }
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault()
+    const final = nombre.trim()
+    if (!final) return
     setGuardando(true)
     try {
-      await api.guardarPlan(nombre, data)
-      setMensaje(`Guardado como "${nombre}" — encuéntralo en Seguimiento ↓`)
+      await api.guardarPlan(final, data)
+      setDialogo(false)
+      setMensaje(`Guardado como "${final}"`)
       onGuardado?.()
-      window.setTimeout(() => {
-        document.getElementById('seguimiento')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }, 600)
-    } catch (e) {
-      setMensaje(e instanceof Error ? e.message : 'Error al guardar')
+    } catch (err) {
+      setMensaje(err instanceof Error ? err.message : 'Error al guardar')
     } finally {
       setGuardando(false)
       window.setTimeout(() => setMensaje(''), 5000)
@@ -53,8 +62,13 @@ export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuarda
           </div>
           <div className="flex items-center gap-2">
             {mensaje && <span role="status" className="text-xs text-primary">{mensaje}</span>}
-            <Button variant="outline" size="sm" onClick={guardar} disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Guardar plan'}
+            {onVerSeguimiento && (
+              <Button variant="secondary" size="sm" onClick={onVerSeguimiento}>
+                Ver en Seguimiento
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={abrirDialogo} disabled={guardando}>
+              Guardar plan
             </Button>
           </div>
         </CardHeader>
@@ -146,6 +160,31 @@ export function Resultados({ data, onGuardado }: { data: Recomendacion; onGuarda
       </Card>
 
       <Evidencia evidencia={data.evidencia} referencias={data.referencias ?? {}} />
+
+      <Dialog
+        open={dialogo}
+        onClose={() => setDialogo(false)}
+        titulo="Guardar plan de fertilización"
+        acciones={
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setDialogo(false)}>Cancelar</Button>
+            <Button size="sm" onClick={guardar} disabled={guardando || !nombre.trim()}>
+              {guardando ? 'Guardando…' : 'Guardar'}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={guardar}>
+          <Label htmlFor="nombre-plan">Nombre del plan</Label>
+          <Input
+            id="nombre-plan"
+            value={nombre}
+            onChange={e => setNombre(e.target.value)}
+            placeholder="ej: Tomate lote norte"
+            maxLength={80}
+          />
+        </form>
+      </Dialog>
     </section>
   )
 }
