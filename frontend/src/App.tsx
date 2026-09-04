@@ -104,6 +104,9 @@ export default function App() {
     setErrorGlobal('')
     try {
       setResultado(await api.calcularRecomendacion(construirSolicitud()))
+      window.setTimeout(() => {
+        document.getElementById('resultado')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
     } catch (err) {
       setResultado(null)
       setErrorGlobal(err instanceof Error ? err.message : 'Error inesperado')
@@ -124,8 +127,13 @@ export default function App() {
   }
 
   function irAPlanificar() {
+    setResultado(null)
+    setErrorGlobal('')
     setVista('planificar')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0 })
+    window.setTimeout(() => {
+      document.getElementById('cultivo')?.focus()
+    }, 100)
   }
 
   function irASeguimiento() {
@@ -196,6 +204,16 @@ export default function App() {
           <>
             <section aria-label="Planificar" hidden={vista !== 'planificar'} className="space-y-4">
               <SectionHeader paso="1" titulo="Planifica tu fertilización" />
+              {!resultado && !calculando && (
+                <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+                  <p className="font-medium text-foreground">Para crear un plan nuevo, sigue estos pasos:</p>
+                  <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+                    <li>Elige el cultivo y el rendimiento esperado abajo.</li>
+                    <li>Pulsa <strong className="text-foreground">«Calcular plan de fertilización»</strong>.</li>
+                    <li>En el resultado que aparece, pulsa <strong className="text-foreground">«Guardar plan»</strong> y ponle un nombre.</li>
+                  </ol>
+                </div>
+              )}
               <FormularioLote
                 cultivos={cultivos}
                 cultivoId={cultivoId}

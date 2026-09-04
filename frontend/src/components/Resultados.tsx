@@ -49,7 +49,7 @@ export function Resultados({ data, onGuardado, onVerSeguimiento }: { data: Recom
   }
 
   return (
-    <section aria-label="Resultados del plan" className="space-y-4">
+    <section aria-label="Resultados del plan" id="resultado" className="scroll-mt-20 space-y-4">
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-2">
           <div>
