@@ -33,9 +33,15 @@ export default function App() {
   const [errorGlobal, setErrorGlobal] = useState('')
   const [calculando, setCalculando] = useState(false)
   const [modo, setModo] = useState('')
+  const [avisoGcal, setAvisoGcal] = useState('')
   const { planes, estadoPlanes, recargarPlanes, eliminarPlan } = usePlanes()
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('gcal') === 'ok') {
+      setAvisoGcal('Cuenta de Google vinculada. Abre una siembra para sincronizar su calendario.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
     api.health().then(setModo).catch(() => {})
     api
       .listarCultivos()
@@ -200,6 +206,19 @@ export default function App() {
         <p className="mb-5 text-xs text-muted-foreground">
           Planifica por cultivo · Sigue tu siembra por fase · Resuelve dudas con el asistente
         </p>
+
+      {avisoGcal && (
+        <div className="mb-4 rounded-md border border-green-800 bg-green-950/60 px-3 py-2 text-xs text-green-300" role="status">
+          {avisoGcal}
+          <button
+            type="button"
+            onClick={() => setAvisoGcal('')}
+            className="ml-2 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
 
       {errorGlobal && (
         <Alert variant="destructive" title="No se pudo completar la operación" className="mb-4">

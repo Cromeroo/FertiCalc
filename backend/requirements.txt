@@ -8,3 +8,5 @@ python-multipart==0.0.*
 torch==2.5.1+cpu
 sentence-transformers==3.3.*
 pypdf==5.*
+google-api-python-client==2.*
+google-auth-oauthlib==1.*

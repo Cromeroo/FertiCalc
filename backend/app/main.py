@@ -352,3 +352,81 @@ def actualizar_bbch(siembra_id: str, req: ActualizarBbchRequest):
     if not db.actualizar_bbch(siembra_id, req.bbch_actual):
         raise HTTPException(404, "Siembra no encontrada")
     return {"siembra_id": siembra_id, "bbch_actual": req.bbch_actual}
+
+
+@app.get("/api/gcal/estado")
+def estado_gcal():
+    try:
+        from . import gcal as gcal_mod
+
+        gcal_mod.leer_config()
+        configurado = True
+    except ValueError:
+        return {"configurado": False, "vinculado": False, "email": ""}
+    token = db.obtener_token_gcal()
+    if not token or not token.get("refresh_token"):
+        return {"configurado": True, "vinculado": False, "email": ""}
+    return {"configurado": True, "vinculado": True, "email": token.get("email", "")}
+
+
+@app.get("/api/gcal/auth-url")
+def url_auth_gcal():
+    try:
+        from . import gcal as gcal_mod
+
+        return {"url": gcal_mod.url_autorizacion()}
+    except ValueError as e:
+        raise HTTPException(503, str(e))
+
+
+@app.get("/api/gcal/callback")
+def callback_gcal(code: str = ""):
+    from fastapi.responses import RedirectResponse
+
+    from . import gcal as gcal_mod
+
+    if not code:
+        raise HTTPException(400, "Falta el parámetro code")
+    try:
+        gcal_mod.intercambiar_codigo(code)
+    except ValueError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"Google rechazó el código: {e}")
+    try:
+        frente = gcal_mod.leer_config()["frontend_url"]
+    except ValueError:
+        frente = "http://localhost:3000"
+    return RedirectResponse(f"{frente}/?gcal=ok", status_code=302)
+
+
+@app.post("/api/gcal/desvincular")
+def desvincular_gcal():
+    db.borrar_token_gcal()
+    return {"vinculado": False}
+
+
+class SincronizarGcalRequest(BaseModel):
+    forzar: bool = False
+
+
+@app.post("/api/gcal/sincronizar/{siembra_id}")
+def sincronizar_gcal(siembra_id: str, req: SincronizarGcalRequest | None = None):
+    from . import gcal as gcal_mod
+
+    siembra = db.obtener_siembra(siembra_id)
+    if not siembra:
+        raise HTTPException(404, "Siembra no encontrada")
+    plan = db.obtener_plan(siembra["plan_id"])
+    if not plan:
+        raise HTTPException(404, "Plan de la siembra no encontrado")
+    try:
+        resultado = gcal_mod.sincronizar_calendario(
+            _calendario(siembra, plan),
+            plan["nombre"],
+            siembra_id,
+            forzar=bool(req and req.forzar),
+        )
+    except ValueError as e:
+        raise HTTPException(503, str(e))
+    return resultado

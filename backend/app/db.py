@@ -71,6 +71,29 @@ def init_db():
             )
             """
         )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gcal_token (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                access_token TEXT NOT NULL,
+                refresh_token TEXT NOT NULL,
+                expira TEXT NOT NULL,
+                email TEXT DEFAULT '',
+                actualizada TEXT NOT NULL
+            )
+            """
+        )
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gcal_eventos (
+                siembra_id TEXT NOT NULL,
+                orden_fase INTEGER NOT NULL,
+                evento_id TEXT NOT NULL,
+                PRIMARY KEY (siembra_id, orden_fase),
+                FOREIGN KEY (siembra_id) REFERENCES siembras(id) ON DELETE CASCADE
+            )
+            """
+        )
 
 
 def guardar_plan(nombre: str, cultivo_id: str, cultivo_nombre: str, rendimiento: float, recomendacion: dict) -> str:
@@ -206,6 +229,61 @@ def marcar_aplicacion(siembra_id: str, orden_fase: int, estado: str) -> bool:
             ),
         )
     return cur.rowcount > 0
+
+
+def guardar_token_gcal(access_token: str, refresh_token: str, expira: str, email: str = "") -> None:
+    with _conn() as c:
+        c.execute(
+            """
+            INSERT INTO gcal_token (id, access_token, refresh_token, expira, email, actualizada)
+            VALUES (1, ?, ?, ?, ?, ?)
+            ON CONFLICT (id)
+            DO UPDATE SET access_token = excluded.access_token,
+                          refresh_token = excluded.refresh_token,
+                          expira = excluded.expira,
+                          email = excluded.email,
+                          actualizada = excluded.actualizada
+            """,
+            (access_token, refresh_token, expira, email, datetime.now(timezone.utc).isoformat()),
+        )
+
+
+def obtener_token_gcal() -> dict | None:
+    with _conn() as c:
+        row = c.execute("SELECT * FROM gcal_token WHERE id = 1").fetchone()
+    return dict(row) if row else None
+
+
+def borrar_token_gcal() -> None:
+    with _conn() as c:
+        c.execute("DELETE FROM gcal_token WHERE id = 1")
+
+
+def guardar_evento_gcal(siembra_id: str, orden_fase: int, evento_id: str) -> None:
+    with _conn() as c:
+        c.execute(
+            """
+            INSERT INTO gcal_eventos (siembra_id, orden_fase, evento_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT (siembra_id, orden_fase)
+            DO UPDATE SET evento_id = excluded.evento_id
+            """,
+            (siembra_id, orden_fase, evento_id),
+        )
+
+
+def eventos_gcal_siembra(siembra_id: str) -> dict[int, str]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT orden_fase, evento_id FROM gcal_eventos WHERE siembra_id = ?",
+            (siembra_id,),
+        ).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
+def borrar_eventos_gcal_siembra(siembra_id: str) -> None:
+    with _conn() as c:
+        c.execute("DELETE FROM gcal_eventos WHERE siembra_id = ?", (siembra_id,))
 
 
 init_db()

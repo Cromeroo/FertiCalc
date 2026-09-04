@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { CalendarioSiembra } from './CalendarioSiembra'
 import { LineaTiempo } from './LineaTiempo'
+import { VinculoGoogle } from './VinculoGoogle'
 import { calendarioIcs, descargarIcs } from '@/lib/calendar'
 import type { EstadoSiembra, SiembraResumen } from '@/lib/api'
 
@@ -55,6 +56,8 @@ export function DetalleSiembra({ detalle, seleccionada, onVolver, onCambiar }: P
           Impórtalo en Google Calendar u Outlook para recibir notificaciones.
         </span>
       </div>
+
+      <VinculoGoogle siembraId={detalle.siembra.id} />
 
       <Progress value={hechas} max={total} label={`Progreso: ${hechas} de ${total} fases`} />
 

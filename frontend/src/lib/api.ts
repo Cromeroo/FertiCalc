@@ -311,6 +311,43 @@ export async function marcarFase(siembraId: string, orden: number, estado: 'apli
   if (!r.ok) throw new Error('No se pudo actualizar la fase')
 }
 
+export interface EstadoGcal {
+  configurado: boolean
+  vinculado: boolean
+  email: string
+}
+
+export interface ResultadoSincronizacion {
+  creados: number
+  actualizados: number
+  omitidos: number
+}
+
+export async function gcalEstado(): Promise<EstadoGcal> {
+  return pedir<EstadoGcal>('/api/gcal/estado')
+}
+
+export async function gcalVincular(): Promise<void> {
+  const data = await pedir<{ url: string }>('/api/gcal/auth-url')
+  window.location.href = data.url
+}
+
+export async function gcalDesvincular(): Promise<void> {
+  const r = await fetch('/api/gcal/desvincular', { method: 'POST' })
+  if (!r.ok) throw new Error('No se pudo desvincular la cuenta')
+}
+
+export async function gcalSincronizar(siembraId: string, forzar = false): Promise<ResultadoSincronizacion> {
+  const r = await fetch(`/api/gcal/sincronizar/${siembraId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ forzar })
+  })
+  const data = await r.json()
+  if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'No se pudo sincronizar')
+  return data as ResultadoSincronizacion
+}
+
 export interface EstadoGnn {
   entrenado: boolean
   arquitectura?: string
