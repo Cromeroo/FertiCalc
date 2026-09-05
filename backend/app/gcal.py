@@ -1,5 +1,8 @@
 import os
+import secrets
+import time
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 
 from . import db
 
@@ -9,8 +12,14 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email",
 ]
 
+AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+
 HORA_APLICACION = "08:00"
 MINUTOS_RECORDATORIO = 720
+VIGENCIA_STATE_SEG = 600
+
+_estados_pendientes: dict[str, float] = {}
 
 
 def leer_config() -> dict:
@@ -32,51 +41,69 @@ def leer_config() -> dict:
     }
 
 
-def _flow(cfg: dict):
-    from google_auth_oauthlib.flow import Flow
-
-    return Flow.from_client_config(
-        {
-            "web": {
-                "client_id": cfg["client_id"],
-                "client_secret": cfg["client_secret"],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        },
-        scopes=SCOPES,
-        redirect_uri=cfg["redirect_uri"],
-    )
+def _limpiar_estados():
+    ahora = time.time()
+    for k in [k for k, v in _estados_pendientes.items() if ahora - v > VIGENCIA_STATE_SEG]:
+        del _estados_pendientes[k]
 
 
 def url_autorizacion() -> str:
     cfg = leer_config()
-    flow = _flow(cfg)
-    url, _ = flow.authorization_url(
-        access_type="offline", prompt="consent", include_granted_scopes="false"
+    _limpiar_estados()
+    state = secrets.token_urlsafe(24)
+    _estados_pendientes[state] = time.time()
+    return AUTH_URL + "?" + urlencode(
+        {
+            "response_type": "code",
+            "client_id": cfg["client_id"],
+            "redirect_uri": cfg["redirect_uri"],
+            "scope": " ".join(SCOPES),
+            "access_type": "offline",
+            "prompt": "consent",
+            "state": state,
+        }
     )
-    return url
 
 
-def intercambiar_codigo(code: str) -> str:
+def intercambiar_codigo(code: str, state: str = "") -> str:
     import requests
 
     cfg = leer_config()
-    flow = _flow(cfg)
-    flow.fetch_token(code=code)
-    creds = flow.credentials
-    resp = requests.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {creds.token}"},
+    _limpiar_estados()
+    if not state or state not in _estados_pendientes:
+        raise ValueError(
+            "Estado OAuth inválido o vencido. Vuelve a pulsar «Vincular mi Google Calendar»."
+        )
+    del _estados_pendientes[state]
+    resp = requests.post(
+        TOKEN_URL,
+        data={
+            "code": code,
+            "client_id": cfg["client_id"],
+            "client_secret": cfg["client_secret"],
+            "redirect_uri": cfg["redirect_uri"],
+            "grant_type": "authorization_code",
+        },
         timeout=20,
     )
-    email = resp.json().get("email", "") if resp.status_code == 200 else ""
-    expira = (
-        creds.expiry.astimezone(timezone.utc).isoformat()
-        if creds.expiry
-        else datetime.now(timezone.utc).isoformat()
+    if resp.status_code != 200:
+        detalle = resp.json().get("error_description", resp.text[:200])
+        raise ValueError(f"Google rechazó el código ({resp.status_code}): {detalle}")
+    datos = resp.json()
+    token, refresh = datos.get("access_token", ""), datos.get("refresh_token", "")
+    if not token or not refresh:
+        raise ValueError("Google no devolvió tokens. Intenta desvincular y volver a vincular.")
+    info = requests.get(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=20,
     )
-    db.guardar_token_gcal(creds.token, creds.refresh_token or "", expira, email)
+    email = info.json().get("email", "") if info.status_code == 200 else ""
+    expira_en = int(datos.get("expires_in", 3600))
+    expira = datetime.fromtimestamp(
+        time.time() + expira_en, tz=timezone.utc
+    ).isoformat()
+    db.guardar_token_gcal(token, refresh, expira, email)
     return email
 
 

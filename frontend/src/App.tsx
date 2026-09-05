@@ -39,7 +39,10 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('gcal') === 'ok') {
-      setAvisoGcal('Cuenta de Google vinculada. Abre una siembra para sincronizar su calendario.')
+      setAvisoGcal('ok:Cuenta de Google vinculada. Abre una siembra para sincronizar su calendario.')
+      window.history.replaceState({}, '', window.location.pathname)
+    } else if (params.get('gcal') === 'error') {
+      setAvisoGcal('error:Google no autorizó la vinculación. Inténtalo de nuevo desde Seguimiento.')
       window.history.replaceState({}, '', window.location.pathname)
     }
     api.health().then(setModo).catch(() => {})
@@ -208,8 +211,13 @@ export default function App() {
         </p>
 
       {avisoGcal && (
-        <div className="mb-4 rounded-md border border-green-800 bg-green-950/60 px-3 py-2 text-xs text-green-300" role="status">
-          {avisoGcal}
+        <div
+          className={avisoGcal.startsWith('error:')
+            ? 'mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-red-200'
+            : 'mb-4 rounded-md border border-green-800 bg-green-950/60 px-3 py-2 text-xs text-green-300'}
+          role="status"
+        >
+          {avisoGcal.replace(/^(ok|error):/, '')}
           <button
             type="button"
             onClick={() => setAvisoGcal('')}

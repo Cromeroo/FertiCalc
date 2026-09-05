@@ -80,3 +80,15 @@ class TestGcalUnitario:
         url = gcal_mod.url_autorizacion()
         assert url.startswith("https://accounts.google.com/o/oauth2/auth")
         assert "calendar.events" in url
+        assert "code_challenge" not in url
+
+    def test_callback_error_redirige(self, client):
+        r = client.get("/api/gcal/callback?error=access_denied", follow_redirects=False)
+        assert r.status_code == 302
+        assert "gcal=error" in r.headers["location"]
+
+    def test_callback_state_invalido_503(self, client, monkeypatch):
+        monkeypatch.setenv("GOOGLE_CLIENT_ID", "id-prueba.apps.googleusercontent.com")
+        monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "secreto-prueba")
+        r = client.get("/api/gcal/callback?code=abc&state=invalido")
+        assert r.status_code == 503

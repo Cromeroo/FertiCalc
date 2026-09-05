@@ -380,23 +380,25 @@ def url_auth_gcal():
 
 
 @app.get("/api/gcal/callback")
-def callback_gcal(code: str = ""):
+def callback_gcal(code: str = "", state: str = "", error: str = ""):
     from fastapi.responses import RedirectResponse
 
     from . import gcal as gcal_mod
 
-    if not code:
-        raise HTTPException(400, "Falta el parámetro code")
-    try:
-        gcal_mod.intercambiar_codigo(code)
-    except ValueError as e:
-        raise HTTPException(503, str(e))
-    except Exception as e:
-        raise HTTPException(502, f"Google rechazó el código: {e}")
     try:
         frente = gcal_mod.leer_config()["frontend_url"]
     except ValueError:
         frente = "http://localhost:3000"
+    if error:
+        return RedirectResponse(f"{frente}/?gcal=error", status_code=302)
+    if not code:
+        raise HTTPException(400, "Falta el parámetro code")
+    try:
+        gcal_mod.intercambiar_codigo(code, state)
+    except ValueError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"Google rechazó el código: {e}")
     return RedirectResponse(f"{frente}/?gcal=ok", status_code=302)
 
 
