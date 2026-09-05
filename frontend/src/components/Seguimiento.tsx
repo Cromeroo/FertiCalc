@@ -8,6 +8,7 @@ import { ListaSiembras } from './seguimiento/ListaSiembras'
 import { FormularioSiembra } from './seguimiento/FormularioSiembra'
 import { DetalleSiembra } from './seguimiento/DetalleSiembra'
 import { AgendaGlobal } from './seguimiento/AgendaGlobal'
+import { VinculoGoogle } from './seguimiento/VinculoGoogle'
 
 type Pestaña = 'lista' | 'calendario' | 'nueva'
 
@@ -33,6 +34,10 @@ export function Seguimiento({ planes }: { planes: Array<{ id: string; nombre: st
         <p className="mt-0.5 text-[11px] text-muted-foreground">
           Convierte un plan en calendario vivo: te indica qué aplicación toca y te permite marcar avances.
         </p>
+        <div className="mt-2 rounded-lg border border-border bg-background p-2.5">
+          <p className="mb-1.5 text-[11px] font-medium">Google Calendar</p>
+          <VinculoGoogle />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && (

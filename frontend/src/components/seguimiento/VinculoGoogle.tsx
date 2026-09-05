@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { EstadoGcal } from '@/lib/api'
 
-export function VinculoGoogle({ siembraId }: { siembraId: string }) {
+export function VinculoGoogle({ siembraId }: { siembraId?: string }) {
   const [estado, setEstado] = useState<EstadoGcal | null>(null)
   const [cargando, setCargando] = useState(false)
   const [mensaje, setMensaje] = useState('')
@@ -37,6 +37,7 @@ export function VinculoGoogle({ siembraId }: { siembraId: string }) {
   }
 
   async function sincronizar() {
+    if (!siembraId) return
     setCargando(true)
     setMensaje('')
     try {
@@ -67,9 +68,11 @@ export function VinculoGoogle({ siembraId }: { siembraId: string }) {
       {estado && estado.vinculado ? (
         <>
           <Badge variant="success">Vinculado: {estado.email || 'tu cuenta'}</Badge>
-          <Button variant="outline" size="sm" onClick={sincronizar} disabled={cargando}>
-            {cargando ? 'Sincronizando…' : 'Sincronizar esta siembra'}
-          </Button>
+          {siembraId && (
+            <Button variant="outline" size="sm" onClick={sincronizar} disabled={cargando}>
+              {cargando ? 'Sincronizando…' : 'Sincronizar esta siembra'}
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={desvincular} disabled={cargando}>
             Desvincular
           </Button>
